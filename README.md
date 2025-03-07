@@ -87,7 +87,7 @@ import { toast } from "sonner";
 - `src/lib/` - 유틸리티 함수 및 헬퍼
 - `public/` - 정적 자산 (이미지, 아이콘 등)
 
-````bash
+``` bash
 public/
 src/
 ├── app/ # Next.js App Router 기반 라우팅
@@ -156,6 +156,7 @@ src/
 ├── config/             # 설정 파일
 ├── store/              # 상태 관리 (Zustand)
 ├── .env.local          # 환경 변수
+```
 
 ## 코드 스타일 가이드
 
@@ -216,7 +217,8 @@ pnpm format
 
 ### VS Code 설정
 
-VS Code의 `settings.json`에 다음 설정을 추가하세요:
+VS Code의 `settings.json`에 다음 설정을 추가하세요
+파일 저장 시 자동으로 코드를 포맷팅하고 ESLint 오류를 수정합니다.
 
 ```json
 {
@@ -228,4 +230,3 @@ VS Code의 `settings.json`에 다음 설정을 추가하세요:
 }
 ```
 
-이 설정은 파일 저장 시 자동으로 코드를 포맷팅하고 ESLint 오류를 수정합니다.
