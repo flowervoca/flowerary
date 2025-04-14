@@ -9,6 +9,6 @@ jobs:
       - name: Label to PR
         uses: naver/simple-labeler@latest
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.FLOWER_VOCA_ACTION_SECRET }}
           labels: "D-3"
           duplicate: "D-*"
