@@ -8,7 +8,7 @@ const communityPosts = [
   { id: 3, title: '벚꽃', content: '언제 꽃 피는게 제일 예쁜가요?', date: '2025-03-04' },
   { id: 4, title: '비어디드 아이리스', content: '꽃 잘키우는 방법, 팁 알려드립니다.', date: '2025-03-04' },
   { id: 5, title: '수국', content: '살리는 방법 공유 부탁드려요 시급합니다', date: '2025-03-04' },
-  { id: 6, title: '무궁화', content: '보통 어디서 피고 볼 수 있나요?', date: '2025-03-04' },
+  { id: 6, title: '무궁화', content: '어디서 피고 볼 수 있나요?', date: '2025-03-04' },
   { id: 7, title: '을릉국화', content: '지금 키우고있는데 생각보다 어렵네요', date: '2025-03-04' },
   { id: 8, title: '진달래', content: '꽃 잘키우는 방법, 팁 알려드립니다.', date: '2025-03-04' },
 ];
