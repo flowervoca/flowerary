@@ -2,6 +2,10 @@ name: Simple Labeler
 on:
   pull_request:
     types: [opened, ready_for_review]
+permissions:
+  pull-requests: write
+  contents: read
+
 jobs:
   simple-labeler:
     runs-on: [ubuntu-latest]
