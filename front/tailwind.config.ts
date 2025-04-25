@@ -29,6 +29,10 @@ const config: Config = {
       },
       colors: {
         primary: '#3E7959',
+        border: 'hsl(var(--border))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
       },
       backgroundImage: {
         'gradient-radial':
