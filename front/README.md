@@ -157,6 +157,7 @@ src/
 ├── utils/              # 유틸리티 함수
 ├── config/             # 설정 파일
 ├── store/              # 상태 관리 (Zustand)
+├── assets/             # 이미지, 폰트 등
 ├── .env.local          # 환경 변수
 ```
 
