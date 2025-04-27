@@ -3,8 +3,15 @@
 import { useState, useEffect } from 'react';
 import { FlowerCard } from '@/components/shared/flower-card';
 import { IFlower } from '@/types';
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, Calendar, RotateCcw } from 'lucide-react';
 import flowerDummyData from './flower-dummy.json';
+import { Button } from '@/components/ui/button';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 
 // API 응답 타입 정의
 interface IFlowerResponse {
@@ -74,11 +81,13 @@ export default function SearchPage() {
   // 태그 목록 추출 (꽃말 목록)
   useEffect(() => {
     if (flowerList.length > 0) {
-      const tags = [
-        ...new Set(
-          flowerList.map((flower) => flower.f_low_lang),
-        ),
-      ];
+      // 쉼표로 구분된 꽃말을 개별 태그로 분리하고 중복 제거
+      const allTags = flowerList.flatMap((flower) =>
+        flower.f_low_lang
+          .split(',')
+          .map((tag) => tag.trim()),
+      );
+      const tags = [...new Set(allTags)];
       setAvailableTags(tags);
     }
   }, [flowerList]);
@@ -89,16 +98,19 @@ export default function SearchPage() {
 
     let result = [...flowerList];
 
-    // 태그 필터링
+    // 태그 필터링 (쉼표로 구분된 꽃말 고려)
     if (filters.tags.length > 0) {
-      result = result.filter((flower) =>
-        filters.tags.includes(flower.f_low_lang),
-      );
+      result = result.filter((flower) => {
+        const flowerTags = flower.f_low_lang
+          .split(',')
+          .map((tag) => tag.trim());
+        return filters.tags.some((tag) =>
+          flowerTags.includes(tag),
+        );
+      });
     }
 
-    // 계절, 이벤트, 색상 필터링은 API에서 필요한 데이터가 제공되면 구현
-    // 현재는 데모 용도로 일부만 필터링
-
+    // 계절, 이벤트, 색상 필터링은 그대로 유지
     setFilteredFlowers(result);
   }, [flowerList, filters]);
 
@@ -203,12 +215,11 @@ export default function SearchPage() {
     fetchFlowerList();
   }, []);
 
+  // todo: 로딩 인디케이터 or 스켈레톤 적용
   if (isLoading) {
     return (
       <div className='container mx-auto py-10 px-4 flex items-center justify-center min-h-[50vh]'>
-        <div className='text-xl font-medium'>
-          데이터를 불러오는 중...
-        </div>
+        <div className='text-xl font-medium'>로딩중</div>
       </div>
     );
   }
@@ -233,19 +244,56 @@ export default function SearchPage() {
           <span className='text-primary'>{keyword}</span>에
           대한 검색 결과
         </h1>
-
-        <div className='my-8 flex justify-center'>
-          <div className='relative w-full max-w-2xl'>
-            <input
-              type='text'
-              placeholder='꽃을 검색해보세요!'
-              className='w-full px-4 py-3 rounded-full border border-2 border-primary text-center text-lg'
-            />
-            <button className='absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full'>
-              <Search className='w-5 h-5 text-primary' />
-            </button>
-          </div>
-        </div>
+        <article
+          id='search'
+          className='my-8 flex justify-center'
+        >
+          <h2 className='sr-only'>검색</h2>
+          <Tabs
+            className='flex w-full max-w-2xl justify-center items-center'
+            defaultValue='flowerName'
+          >
+            <TabsList className='bg-[#D8E4DE] p-1 rounded-full h-12'>
+              <TabsTrigger
+                value='flowerName'
+                className='text-lg rounded-full py-4 px-16 flex-1 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:font-bold'
+              >
+                꽃 검색
+              </TabsTrigger>
+              <TabsTrigger
+                value='flowerLang'
+                className='text-lg rounded-full py-4 px-16 flex-1 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:font-bold'
+              >
+                꽃말 검색
+              </TabsTrigger>
+            </TabsList>
+            <div className='relative w-full mt-4 flex rounded-full border-2 border-primary py-3 px-8 gap-4'>
+              <TabsContent value='flowerName'>
+                <input
+                  type='text'
+                  placeholder='꽃의 이름을 검색하세요!'
+                  className='w-full  text-center text-lg'
+                />
+              </TabsContent>
+              <TabsContent value='flowerLang'>
+                <input
+                  type='text'
+                  placeholder='꽃말을 검색하세요!'
+                  className='w-full text-center text-lg'
+                />
+              </TabsContent>
+              <button>
+                <Calendar className='w-5 h-5 text-primary' />
+                {/* Todo: datepicker 적용 */}
+                <span className='sr-only'>날짜 선택</span>
+              </button>
+              <button>
+                <Search className='w-5 h-5 text-primary' />
+                <span className='sr-only'>검색</span>
+              </button>
+            </div>
+          </Tabs>
+        </article>
 
         <div className='flex flex-col md:flex-row gap-6'>
           {/* 필터 섹션 */}
@@ -256,13 +304,13 @@ export default function SearchPage() {
             <div className='bg-white p-4 rounded-lg shadow-sm border border-gray-100'>
               <div className='flex justify-between items-center mb-4'>
                 <h2 className='text-xl font-bold'>필터</h2>
-                <button
+                <Button
+                  variant='outline'
                   onClick={resetFilters}
-                  className='text-primary text-sm flex items-center'
                 >
                   <RotateCcw className='w-3 h-3 mr-1' />
                   초기화
-                </button>
+                </Button>
               </div>
 
               {/* 계절 필터 */}
@@ -303,7 +351,7 @@ export default function SearchPage() {
                 <h3 className='text-lg font-bold mb-2'>
                   태그
                 </h3>
-                <div className='space-y-1 max-h-40 overflow-y-auto'>
+                <div className='space-y-1 max-h- 48 overflow-y-auto'>
                   {availableTags.map((tag) => (
                     <div
                       key={tag}
