@@ -1,83 +1,131 @@
 'use client';
 
 import useEmblaCarousel from 'embla-carousel-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Image from 'next/image';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const bannerItems = [
   {
     id: 1,
-    title: '꽃과 함께하는 공간',
-    subtitle: '플로러리 florary',
-    description: '🌼 꽃말 정보와 함께 큐레이션을 제공하는 꽃 도서관 📚',
-    backgroundImage: 'https://mblogthumb-phinf.pstatic.net/MjAxNzAzMDdfMjMw/MDAxNDg4ODcyMzgwNjU2.669-9ZRgZJ-EQTJjcfRzp05wrMqwjPaJF0UxvFs1nOog.f_g5wz8Wzt2f_XsTPmFQRWjaPdFsSr8PzGG_m7wH7UUg.JPEG.rallycap/beautiful_spring_season-wallpaper-1920x1080.jpg?type=w800'
+    backgroundImage: require('@/assets/images/flower-banner/DesertRose.png'),
+    meaning: '지혜',
+    name: '사막장미',
+    engName: 'DesertRose',
+    description: '건조한 환경에서도 피어나는 강인함과 지혜를 상징합니다.'
   },
   {
     id: 2,
-    title: '나만의 꽃다발 만들기',
-    subtitle: '3D 꽃다발 디자인',
-    description: '🎨 직접 디자인하는 나만의 특별한 꽃다발 💐',
-    backgroundImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4_B8EUX5p7ZIKM1Gxegsm9VMNed3mTKz55g&s'
+    backgroundImage: require('@/assets/images/flower-banner/Magnolia.png'),
+    meaning: '자연에의 사랑',
+    name: '목련',
+    engName: 'Magnolia',
+    description: '순수함과 자연을 사랑하는 마음을 담고 있습니다.'
   },
   {
     id: 3,
-    title: '플로리스트 추천',
-    subtitle: '전문가의 선택',
-    description: '👨‍🌾 검증된 플로리스트가 추천하는 꽃과 식물 🌺',
-    backgroundImage: 'https://img.freepik.com/premium-photo/blooming-pink-cosmos-flowers_41929-1336.jpg'
+    backgroundImage: require('@/assets/images/flower-banner/Gujeolcho.png'),
+    meaning: '보호',
+    name: '구절초',
+    engName: 'Gujeolcho',
+    description: '가을 들판을 지키는 보호와 헌신의 의미를 지닙니다.'
   },
   {
     id: 4,
-    title: '오늘의 꽃',
-    subtitle: '매일 새로운 꽃 이야기',
-    description: '🌸 매일 다른 꽃의 의미와 이야기를 만나보세요 🌸',
-    backgroundImage: 'https://blog.kakaocdn.net/dn/bzZE1I/btqI4dbbDhp/gslcrGqHgR1DcohvTkwMT1/img.jpg'
+    backgroundImage: require('@/assets/images/flower-banner/Cosmos.png'),
+    meaning: '소녀의 순정',
+    name: '코스모스',
+    engName: 'Cosmos',
+    description: '맑고 순수한 소녀의 사랑과 순정을 상징합니다.'
   }
 ];
 
-export function MainBanner() {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 30 });
+export function MainBanner({ autoSlide = true }: { autoSlide?: boolean }) {
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, slidesToScroll: 1, align: 'start' });
+  const [activeFilter, setActiveFilter] = useState('전체');
+  const filters = ['전체', '여자친구 선물', '봄 꽃 추천', '고백 꽃'];
 
-  const scrollPrev = useCallback(() => {
-    if (emblaApi) emblaApi.scrollPrev();
-  }, [emblaApi]);
-
-  const scrollNext = useCallback(() => {
-    if (emblaApi) emblaApi.scrollNext();
-  }, [emblaApi]);
-
+  // 자동 슬라이드
   useEffect(() => {
-    if (!emblaApi) return;
-    
+    if (!emblaApi || !autoSlide) return;
     const interval = setInterval(() => {
       emblaApi.scrollNext();
     }, 5000);
-    
     return () => clearInterval(interval);
-  }, [emblaApi]);
+  }, [emblaApi, autoSlide]);
 
   return (
-    <div className="relative bg-gray-100">
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex">
-          {bannerItems.map((item) => (
+    <div className="w-full relative">
+      <h2
+        className="mb-2 flex items-center gap-2 font-bold text-[40px] font-pretendard"
+      >
+        플로러리에서 추천하는 오늘의 꽃
+        <span role="img" aria-label="flower">🌷</span>
+      </h2>
+      <div className="flex gap-3 mb-2">
+        {filters.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            onClick={() => setActiveFilter(filter)}
+            className={`px-5 py-2 rounded-full border font-semibold transition-colors text-base
+              ${activeFilter === filter
+                ? 'bg-black text-white shadow'
+                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`}
+            style={{ minWidth: 80 }}
+          >
+            {filter}
+          </button>
+        ))}
+      </div>
+      <div className="overflow-hidden w-full" ref={emblaRef}>
+        <div className="flex w-full">
+          {bannerItems.map((item, idx) => (
             <div
               key={item.id}
-              className="flex-[0_0_100%] min-w-0 relative h-[400px] flex items-center justify-center"
-              style={{
-                backgroundImage: `url(${item.backgroundImage})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat'
-              }}
+              className="flex-shrink-0 flex-grow-0 px-2 w-[439px] h-[648px]"
             >
-              <div className="text-center bg-black/30 p-6 rounded-lg">
-                <h1 className="text-4xl font-bold mb-2 text-white">{item.title}</h1>
-                <h2 className="text-2xl mb-4 text-white">{item.subtitle}</h2>
-                <p className="text-white">{item.description}</p>
+              <div className="rounded-2xl overflow-hidden shadow-md bg-white flex flex-col h-full w-full">
+                <div className="relative w-full h-[400px]">
+                  <Image
+                    src={item.backgroundImage}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 439px"
+                    priority={idx === 0}
+                  />
+                </div>
+                <div className={`flex flex-col justify-start w-full px-6 pt-6 pb-5 rounded-b-2xl text-white h-[248px] ${idx === 0 ? 'bg-pink-500' : idx === 1 ? 'bg-neutral-700' : idx === 2 ? 'bg-yellow-500' : 'bg-pink-400'}`}
+                >
+                  <div className="text-xs mb-2">{item.meaning}</div>
+                  <div className="text-2xl font-bold mb-1">{item.name}</div>
+                  <div className="text-sm font-light italic mb-1">{item.engName}</div>
+                  <div className="text-xs whitespace-pre-line mt-6">{item.description}</div>
+                </div>
               </div>
             </div>
           ))}
         </div>
+      </div>
+      {/* 슬라이드 이동 버튼: 배너 하단 오른쪽 끝 */}
+      <div className="w-full flex justify-end gap-3">
+        <button
+          onClick={() => emblaApi && emblaApi.scrollPrev()}
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow hover:bg-gray-100 transition"
+          aria-label="이전"
+          type="button"
+        >
+          <ChevronLeft className="w-5 h-5 text-gray-500" />
+        </button>
+        <button
+          onClick={() => emblaApi && emblaApi.scrollNext()}
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow hover:bg-gray-100 transition"
+          aria-label="다음"
+          type="button"
+        >
+          <ChevronRight className="w-5 h-5 text-gray-500" />
+        </button>
       </div>
     </div>
   );

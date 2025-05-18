@@ -40,6 +40,9 @@ const config: Config = {
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
+      spacing: {
+        ...Object.fromEntries(Array.from({length: 100}, (_, i) => [i+1, `${(i+1)*0.25}rem`])),
+      },
     },
   },
   plugins: [],
