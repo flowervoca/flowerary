@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='ko' suppressHydrationWarning>
-      <body className={`antialiased`}>
+      <body className={`antialiased`} suppressHydrationWarning>
         {children}
         <Toaster />
       </body>
