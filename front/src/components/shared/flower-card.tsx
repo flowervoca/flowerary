@@ -157,7 +157,7 @@ export function FlowerCard({
           src={
             flower.f_img || '/images/placeholder-flower.jpg'
           }
-          alt={flower.f_low_nm}
+          alt={flower.f_low_nm || '꽃 이미지'}
           className='object-cover w-full'
           fill
           sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'

@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-// API 응답 타입 정의
+// API 응답 타입 정의 (실제 Spring Boot 응답)
 interface IFlowerResponse {
   f_pk?: number;
   f_low_nm: string;
@@ -29,10 +29,12 @@ interface IFlowerResponse {
   f_reg_id?: string;
 }
 
-interface IFlowerListResponse {
-  resultMsg: string;
-  totalCount: number;
-  data: IFlowerResponse[];
+// API 요청 타입 정의
+interface ISearchRequest {
+  flowNm?: string;
+  tagName?: string;
+  fmonth?: string;
+  fday?: string;
 }
 
 // 필터 타입 정의
@@ -82,13 +84,9 @@ export default function SearchPage() {
   const [searchDate, setSearchDate] = useState<
     Date | undefined
   >(undefined);
-  const [dateValues, setDateValues] = useState<{
-    fday: string;
-    fmonth: string;
-  }>({ fday: '', fmonth: '' });
   const [flowerNameInput, setFlowerNameInput] =
     useState<string>('');
-  const [flowerLangInput, setFlowerLangInput] =
+  const [flowerDescInput, setFlowerDescInput] =
     useState<string>('');
   const [activeTab, setActiveTab] =
     useState<string>('flowerName');
@@ -100,11 +98,19 @@ export default function SearchPage() {
   useEffect(() => {
     if (flowerList.length > 0) {
       // 쉼표로 구분된 꽃말을 개별 태그로 분리하고 중복 제거
-      const allTags = flowerList.flatMap((flower) =>
-        flower.f_low_lang
+      const allTags = flowerList.flatMap((flower) => {
+        // f_low_lang이 undefined, null, 빈 문자열인 경우 처리
+        if (
+          !flower.f_low_lang ||
+          typeof flower.f_low_lang !== 'string'
+        ) {
+          return [];
+        }
+        return flower.f_low_lang
           .split(',')
-          .map((tag) => tag.trim()),
-      );
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0); // 빈 문자열 제거
+      });
       const tags = [...new Set(allTags)];
       setAvailableTags(tags);
     }
@@ -154,23 +160,13 @@ export default function SearchPage() {
   };
 
   // 날짜 선택 핸들러
-  const handleDateChange = (
-    date: Date | undefined,
-    values?: { fday: string; fmonth: string },
-  ) => {
+  const handleDateChange = (date: Date | undefined) => {
     setSearchDate(date);
-    if (values) {
-      // API 형식에 맞게 가공 (fday: mm, fmonth: dd)
-      setDateValues(values);
-    } else {
-      setDateValues({ fday: '', fmonth: '' });
-    }
   };
 
   // 날짜 초기화 핸들러
   const clearSearchDate = () => {
     setSearchDate(undefined);
-    setDateValues({ fday: '', fmonth: '' });
   };
 
   // 날짜 포맷팅 함수
@@ -190,42 +186,97 @@ export default function SearchPage() {
       setIsLoading(true);
       setError(null);
 
-      // 검색할 꽃 이름 (현재 활성화된 탭에 따라 다른 입력값 사용)
-      const flowNm =
-        activeTab === 'flowerName'
-          ? flowerNameInput
-          : flowerLangInput;
+      // API 요청 데이터 구성
+      const requestData: ISearchRequest = {};
 
-      // API 요청 데이터
-      const requestData = {
-        flowNm: flowNm || '꽃', // 테스트용 기본값
-        fday: dateValues.fday || '',
-        fmonth: dateValues.fmonth || '',
-      };
+      // 꽃 이름 또는 꽃 설명 추가
+      if (
+        activeTab === 'flowerName' &&
+        flowerNameInput.trim()
+      ) {
+        requestData.flowNm = flowerNameInput.trim();
+      } else if (
+        activeTab === 'flowerDesc' &&
+        flowerDescInput.trim()
+      ) {
+        requestData.tagName = flowerDescInput.trim();
+      }
+
+      // 날짜 정보 추가 (선택된 경우만)
+      if (searchDate) {
+        const month = String(searchDate.getMonth() + 1); // 앞의 0 제거
+        const day = String(searchDate.getDate()); // 앞의 0 제거
+        requestData.fmonth = month;
+        requestData.fday = day;
+        console.log('날짜 검색 설정:', {
+          searchDate,
+          month,
+          day,
+          fmonth: requestData.fmonth,
+          fday: requestData.fday,
+        });
+      }
+
+      // 태그 필터 추가 (선택된 경우만)
+      if (filters.tags.length > 0) {
+        // 기존 tagName이 있으면 합치고, 없으면 새로 설정
+        const filterTags = filters.tags.join(',');
+        if (requestData.tagName) {
+          requestData.tagName = `${requestData.tagName},${filterTags}`;
+        } else {
+          requestData.tagName = filterTags;
+        }
+      }
 
       console.log('검색 요청 데이터:', requestData);
+
+      // 검색 조건이 하나도 없는 경우 경고
+      if (
+        !requestData.flowNm &&
+        !requestData.tagName &&
+        !requestData.fmonth &&
+        !requestData.fday
+      ) {
+        setError('검색 조건을 하나 이상 입력해주세요.');
+        setFlowerList([]);
+        setFilteredFlowers([]);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('검색 조건 확인:', {
+        hasFlowNm: !!requestData.flowNm,
+        hasTagName: !!requestData.tagName,
+        hasFmonth: !!requestData.fmonth,
+        hasFday: !!requestData.fday,
+        isDateOnly:
+          !requestData.flowNm &&
+          !requestData.tagName &&
+          (requestData.fmonth || requestData.fday),
+      });
 
       // API 호출 (타임아웃 설정)
       const controller = new AbortController();
       const timeoutId = setTimeout(
         () => controller.abort(),
         8000,
-      ); // 8초 타임아웃
+      );
 
       try {
-        // API 요청 전송 (내부 API 라우트 사용)
-        const response = await fetch('/api/search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const response = await fetch(
+          '/api/flower/searchFlowerAdvanced',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData),
+            signal: controller.signal,
           },
-          body: JSON.stringify(requestData),
-          signal: controller.signal,
-        });
+        );
 
         clearTimeout(timeoutId);
 
-        // 응답 결과 처리
         const data = await response
           .json()
           .catch(() => null);
@@ -249,8 +300,30 @@ export default function SearchPage() {
           );
         }
 
-        if (data && data.data && data.data.length > 0) {
-          // API 응답 데이터를 IFlower[] 형식으로 변환
+        // 응답 데이터 구조 확인 및 처리
+        console.log('응답 데이터 확인:', {
+          hasData: !!data,
+          hasDataField: !!(data && data.data),
+          isDataArray: !!(
+            data &&
+            data.data &&
+            Array.isArray(data.data)
+          ),
+          dataLength:
+            data && data.data
+              ? Array.isArray(data.data)
+                ? data.data.length
+                : 'not array'
+              : 'no data',
+        });
+
+        if (
+          data &&
+          data.data &&
+          Array.isArray(data.data) &&
+          data.data.length > 0
+        ) {
+          // API Route Handler에서 이미 올바른 형식으로 변환된 데이터를 사용
           const flowers: IFlower[] = data.data.map(
             (flower: IFlowerResponse) => ({
               f_low_nm: flower.f_low_nm,
@@ -260,9 +333,13 @@ export default function SearchPage() {
             }),
           );
 
+          console.log('변환된 꽃 데이터:', flowers);
           setFlowerList(flowers);
           setFilteredFlowers(flowers);
         } else {
+          console.log(
+            '검색 결과 없음 또는 데이터 구조 문제',
+          );
           setFlowerList([]);
           setFilteredFlowers([]);
           setError(
@@ -342,7 +419,7 @@ export default function SearchPage() {
                   꽃 검색
                 </TabsTrigger>
                 <TabsTrigger
-                  value='flowerLang'
+                  value='flowerDesc'
                   className='text-lg rounded-full py-4 px-16 flex-1 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:font-bold'
                 >
                   꽃말 검색
@@ -365,17 +442,17 @@ export default function SearchPage() {
                   />
                 </TabsContent>
                 <TabsContent
-                  value='flowerLang'
+                  value='flowerDesc'
                   className='w-full'
                 >
                   <input
-                    id='flowerLang'
+                    id='flowerDesc'
                     type='text'
-                    placeholder='꽃말을 검색하세요!'
+                    placeholder='꽃의 설명을 검색하세요!'
                     className='w-full text-center text-lg'
-                    value={flowerLangInput}
+                    value={flowerDescInput}
                     onChange={(e) =>
-                      setFlowerLangInput(e.target.value)
+                      setFlowerDescInput(e.target.value)
                     }
                   />
                 </TabsContent>
@@ -399,25 +476,7 @@ export default function SearchPage() {
                     <CalendarComponent
                       mode='single'
                       selected={searchDate}
-                      onSelect={(
-                        date: Date | undefined,
-                      ) => {
-                        if (date) {
-                          const day = String(
-                            date.getDate(),
-                          ).padStart(2, '0');
-                          const month = String(
-                            date.getMonth() + 1,
-                          ).padStart(2, '0');
-                          // API 요구사항에 맞게 변경: fday는 날짜, fmonth는 월
-                          handleDateChange(date, {
-                            fday: day,
-                            fmonth: month,
-                          });
-                        } else {
-                          handleDateChange(undefined);
-                        }
-                      }}
+                      onSelect={handleDateChange}
                       initialFocus
                     />
                   </PopoverContent>
@@ -436,7 +495,9 @@ export default function SearchPage() {
           <div className='flex justify-center mb-4'>
             <div className='inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full text-sm text-primary'>
               <span>
-                선택한 날짜: {formatDate(searchDate)}
+                선택한 날짜: {formatDate(searchDate)} (
+                {searchDate.getMonth() + 1}월{' '}
+                {searchDate.getDate()}일)
               </span>
               <button
                 onClick={clearSearchDate}
@@ -617,9 +678,11 @@ export default function SearchPage() {
                 <p className='text-gray-500'>
                   {error
                     ? error
-                    : flowerNameInput || flowerLangInput
+                    : flowerNameInput ||
+                        flowerDescInput ||
+                        searchDate
                       ? '검색 결과가 없습니다. 다른 검색어를 입력해보세요.'
-                      : '검색어를 입력하세요.'}
+                      : '검색어를 입력하거나 날짜를 선택하세요.'}
                 </p>
               </div>
             )}
