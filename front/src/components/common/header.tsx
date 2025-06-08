@@ -8,9 +8,11 @@ export function Header() {
     <header className="w-full border-b !border-black/[0.08] bg-white">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* 로고 */}
-        <Link href="/" className="text-xl font-bold">
-          <img src="/logo.svg" alt="logo" className="w-40" />
-        </Link>
+        <div className="text-xl font-bold">
+          <Link href="/">
+            <img src="/logo.svg" alt="logo" className="w-40 cursor-pointer" />
+          </Link>
+        </div>
       </div>
     </header>
   );
