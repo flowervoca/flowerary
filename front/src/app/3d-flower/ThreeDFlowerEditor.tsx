@@ -86,6 +86,7 @@ export default function ThreeDFlowerEditor() {
   const [camera, setCamera] = useState<Camera | null>(null);
   const [selectedColor, setSelectedColor] =
     useState<string>('bg-[#E5E5E5]');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 클라이언트 사이드 마운트 확인
   useEffect(() => {
@@ -273,25 +274,36 @@ export default function ThreeDFlowerEditor() {
     <div className='w-full h-[calc(100vh-120px)] flex items-center justify-center bg-[#F5F5F5] py-8'>
       <div className='w-[95vw] max-w-[1400px] h-full flex gap-6'>
         {/* Sidebar */}
-        <aside className='w-[260px] h-full bg-white rounded-2xl shadow flex flex-col p-4 gap-4'>
+        <aside className='w-[260px] h-full bg-white rounded-2xl shadow flex flex-col p-4'>
           {/* 제목 입력 */}
           <input
-            className='mb-2 text-lg font-bold border-b outline-none px-2 py-1'
+            className='mb-4 text-lg font-bold border-b outline-none px-2 py-1'
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder='제목을 입력해주세요'
+            placeholder='이름을 지어주세요'
           />
           {/* 탭 */}
-          <div className='flex gap-2 mb-2'>
-            {Object.values(CATEGORY_MAPPING).map((t) => (
-              <button
-                key={t}
-                className={`flex-1 py-1 rounded-full text-sm ${tab === t ? 'bg-[#D8E4DE] font-bold' : 'bg-gray-100'}`}
-                onClick={() => setTab(t)}
-              >
-                {t}
-              </button>
-            ))}
+          <div className='flex gap-2 mb-1'>
+            <div className="flex rounded-full p-1 bg-[#D8E4DE] gap-0 w-full h-9 relative">
+              {/* 슬라이딩 배경 */}
+              <div 
+                className={`absolute h-7 rounded-full bg-white transition-all duration-300 ease-in-out ${
+                  tab === '꽃' ? 'left-1 w-[calc(33.333%-0.5rem)]' :
+                  tab === '포장지' ? 'left-[calc(33.333%+0.25rem)] w-[calc(33.333%-0.5rem)]' :
+                  'left-[calc(66.666%+0.25rem)] w-[calc(33.333%-0.5rem)]'
+                }`}
+              />
+              {Object.values(CATEGORY_MAPPING).map((t) => (
+                <button
+                  key={t}
+                  className={`rounded-full px-2 text-sm font-semibold shadow-none border-none transition-all flex-1 relative z-10
+                    ${tab === t ? 'text-primary' : 'text-[#6F8278]'}`}
+                  onClick={() => setTab(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
           {/* 검색 */}
           <div className='mb-2 flex items-center gap-2'>
@@ -299,6 +311,8 @@ export default function ThreeDFlowerEditor() {
               <input
                 className='w-full border-none focus:ring-0 focus:outline-none bg-transparent flex-1 text-base text-foreground placeholder:text-left'
                 placeholder='검색'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
               <MagnifyingGlassIcon className='w-5 h-5 text-primary cursor-pointer' />
             </div>
@@ -314,33 +328,37 @@ export default function ThreeDFlowerEditor() {
                 데이터가 없습니다.
               </div>
             ) : (
-              items.map((item) => (
-                <div
-                  key={item.id}
-                  className={`flex flex-col items-center bg-gray-50 rounded-lg p-2 border cursor-pointer transition-all h-24
-                    ${selectedModel?.id === item.id ? 'border-lime-500 bg-lime-50' : 'border-gray-200 hover:bg-gray-100'}`}
-                  onClick={() => handleItemClick(item)}
-                >
-                  <div className='relative w-8 h-8 mb-1'>
-                    <Image
-                      src={item.img}
-                      alt={item.name}
-                      fill
-                      style={{ objectFit: 'contain' }}
-                    />
+              items
+                .filter((item) =>
+                  item.name.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className={`flex flex-col items-center bg-gray-50 rounded-lg p-2 border cursor-pointer transition-all h-24
+                      ${selectedModel?.id === item.id ? 'border-lime-500 bg-lime-50' : 'border-gray-200 hover:bg-gray-100'}`}
+                    onClick={() => handleItemClick(item)}
+                  >
+                    <div className='relative w-8 h-8 mb-1'>
+                      <Image
+                        src={item.img}
+                        alt={item.name}
+                        fill
+                        style={{ objectFit: 'contain' }}
+                      />
+                    </div>
+                    <span className='text-xs text-gray-700'>
+                      {item.name}
+                    </span>
                   </div>
-                  <span className='text-xs text-gray-700'>
-                    {item.name}
-                  </span>
-                </div>
-              ))
+                ))
             )}
           </div>
         </aside>
 
         {/* Main Canvas */}
         <section
-          className={`flex-1 h-full ${selectedColor} rounded-2xl relative flex flex-col items-center justify-center`}
+          className={`flex-1 h-full bg-white rounded-2xl shadow relative flex flex-col items-center justify-center`}
         >
           {/* 색상 선택 */}
           <div className='absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center z-10'>
@@ -388,35 +406,26 @@ export default function ThreeDFlowerEditor() {
               </>
             ) : (
               <div className='text-gray-400 text-center'>
-                <div className='relative w-24 h-24 mb-4 mx-auto'>
-                  <Image
-                    src={logoGithub}
-                    alt='3D 미리보기'
-                    fill
-                    style={{ objectFit: 'contain' }}
-                    className='opacity-60'
-                  />
-                </div>
                 <p>왼쪽에서 모델을 선택해주세요</p>
               </div>
             )}
           </div>
           {/* Undo/Redo */}
           <div className='absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4'>
-            <button className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'>
+            <button className='w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-gray-100 transition-all duration-150 ease-in-out flex items-center justify-center'>
               <UndoIcon />
             </button>
-            <button className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'>
+            <button className='w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-gray-100 transition-all duration-150 ease-in-out flex items-center justify-center'>
               <RedoIcon />
             </button>
           </div>
           {/* 오른쪽 하단 버튼 */}
           <div className='absolute bottom-4 right-8 flex gap-4'>
-            <button className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'>
+            <button className='w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-gray-100 transition-all duration-150 ease-in-out flex items-center justify-center'>
               <ResetIcon />
             </button>
             <button
-              className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'
+              className='w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-gray-100 transition-all duration-150 ease-in-out flex items-center justify-center'
               onClick={() =>
                 (window as any).downloadFlower?.(
                   title || '3D-Flowerary',
@@ -426,16 +435,17 @@ export default function ThreeDFlowerEditor() {
               <SaveIcon />
             </button>
             <button
-              className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'
+              className='w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-gray-100 transition-all duration-150 ease-in-out flex items-center justify-center'
               onClick={handleShare}
             >
-              <Image
-                src='/kakaotalk_sharing_btn_small.png'
-                alt='카카오톡 공유'
-                width={24}
-                height={24}
-                className='w-6 h-6'
-              />
+              <div className='w-6 h-6 relative'>
+                <Image
+                  src='/kakaotalk_sharing_btn_small.png'
+                  alt='카카오톡 공유'
+                  fill
+                  className='object-contain'
+                />
+              </div>
             </button>
           </div>
         </section>
