@@ -1,18 +1,35 @@
-"use client";
+'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {
+  saveScreenshot,
+  copyToClipboard,
+} from './utils/downloadUtils';
 
 interface ThreeDFlowerViewerProps {
-  filePath?: string;
+  filePath: string;
+  onDownload?: (filename: string) => void;
+  onCopy?: (success: boolean) => void;
+  onRendererReady?: (
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+  ) => void;
 }
 
-const ThreeDFlowerViewer: React.FC<ThreeDFlowerViewerProps> = ({ filePath }) => {
+const ThreeDFlowerViewer: React.FC<
+  ThreeDFlowerViewerProps
+> = ({ filePath, onDownload, onCopy, onRendererReady }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(
+    null,
+  );
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(
+    null,
+  );
   const controlsRef = useRef<OrbitControls | null>(null);
   const modelRef = useRef<THREE.Object3D | null>(null);
   const [ready, setReady] = useState(false);
@@ -32,16 +49,21 @@ const ThreeDFlowerViewer: React.FC<ThreeDFlowerViewerProps> = ({ filePath }) => 
       // Camera
       const width = mountRef.current!.clientWidth;
       const height = mountRef.current!.clientHeight;
-      const camera = new THREE.PerspectiveCamera(75, width / height, 0.01, 5000);
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        width / height,
+        0.01,
+        5000,
+      );
       camera.position.set(0, 10, 30);
       camera.lookAt(0, 0, 0);
       cameraRef.current = camera;
 
       // Renderer
-      const renderer = new THREE.WebGLRenderer({ 
-        antialias: true, 
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
         alpha: false,
-        preserveDrawingBuffer: true
+        preserveDrawingBuffer: true,
       });
       renderer.setSize(width, height);
       renderer.setPixelRatio(window.devicePixelRatio);
@@ -58,15 +80,27 @@ const ThreeDFlowerViewer: React.FC<ThreeDFlowerViewerProps> = ({ filePath }) => 
       scene.add(dir);
 
       // Controls
-      controls = new OrbitControls(camera, renderer.domElement);
+      controls = new OrbitControls(
+        camera,
+        renderer.domElement,
+      );
       controls.enableDamping = true;
       controls.dampingFactor = 0.1;
       controlsRef.current = controls;
 
       // 테스트용 구체 추가 (중앙에 초록색)
-      const testGeometry = new THREE.SphereGeometry(1, 32, 32);
-      const testMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      const testMesh = new THREE.Mesh(testGeometry, testMaterial);
+      const testGeometry = new THREE.SphereGeometry(
+        1,
+        32,
+        32,
+      );
+      const testMaterial = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+      });
+      const testMesh = new THREE.Mesh(
+        testGeometry,
+        testMaterial,
+      );
       testMesh.position.set(0, 0, 0);
       scene.add(testMesh);
 
@@ -128,36 +162,36 @@ const ThreeDFlowerViewer: React.FC<ThreeDFlowerViewerProps> = ({ filePath }) => 
           const size = box.getSize(new THREE.Vector3());
           const maxSize = Math.max(size.x, size.y, size.z);
           const scale = 10.0 / maxSize;
-          
+
           model.scale.setScalar(scale);
           model.position.set(0, 5, 0);
           model.updateMatrix();
           model.updateMatrixWorld(true);
-          
+
           model.traverse((child: THREE.Object3D) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              mesh.material = new THREE.MeshBasicMaterial({ 
+              mesh.material = new THREE.MeshBasicMaterial({
                 color: 0xff00ff,
                 side: THREE.DoubleSide,
                 transparent: true,
                 opacity: 1.0,
                 depthTest: true,
                 depthWrite: true,
-                wireframe: true
+                wireframe: true,
               });
               mesh.visible = true;
             }
             child.visible = true;
           });
-          
+
           sceneRef.current!.add(model);
           modelRef.current = model;
         },
         undefined,
         (error: unknown) => {
           console.error('GLTF load error:', error);
-        }
+        },
       );
     }
     loadModel();
@@ -170,7 +204,67 @@ const ThreeDFlowerViewer: React.FC<ThreeDFlowerViewerProps> = ({ filePath }) => 
     };
   }, [filePath, ready]);
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
+  useEffect(() => {
+    if (
+      rendererRef.current &&
+      sceneRef.current &&
+      cameraRef.current
+    ) {
+      onRendererReady?.(
+        rendererRef.current,
+        sceneRef.current,
+        cameraRef.current,
+      );
+    }
+  }, [onRendererReady]);
+
+  // 다운로드 함수 추가
+  const handleDownload = (title?: string) => {
+    if (
+      !rendererRef.current ||
+      !sceneRef.current ||
+      !cameraRef.current
+    )
+      return;
+    const filename = saveScreenshot(
+      rendererRef.current,
+      sceneRef.current,
+      cameraRef.current,
+      title,
+    );
+    onDownload?.(filename);
+  };
+
+  // 클립보드 복사 함수 추가
+  const handleCopy = async () => {
+    if (
+      !rendererRef.current ||
+      !sceneRef.current ||
+      !cameraRef.current
+    )
+      return;
+    const success = await copyToClipboard(
+      rendererRef.current,
+      sceneRef.current,
+      cameraRef.current,
+    );
+    onCopy?.(success);
+  };
+
+  // 컴포넌트 외부로 함수 노출
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).downloadFlower = handleDownload;
+      (window as any).copyFlower = handleCopy;
+    }
+  }, []);
+
+  return (
+    <div
+      ref={mountRef}
+      style={{ width: '100%', height: '100%' }}
+    />
+  );
 };
 
-export default ThreeDFlowerViewer; 
+export default ThreeDFlowerViewer;
