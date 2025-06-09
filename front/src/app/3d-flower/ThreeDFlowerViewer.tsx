@@ -12,6 +12,7 @@ interface ThreeDFlowerViewerProps {
   filePath: string;
   onDownload?: (filename: string) => void;
   onCopy?: (success: boolean) => void;
+  color?: string;
   onRendererReady?: (
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene,
@@ -21,7 +22,7 @@ interface ThreeDFlowerViewerProps {
 
 const ThreeDFlowerViewer: React.FC<
   ThreeDFlowerViewerProps
-> = ({ filePath, onDownload, onCopy, onRendererReady }) => {
+> = ({ filePath, onDownload, onCopy, color = 'bg-[#E5E5E5]', onRendererReady }) => {
   const [isMounted, setIsMounted] = useState(false);
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(
@@ -32,8 +33,20 @@ const ThreeDFlowerViewer: React.FC<
     null,
   );
   const controlsRef = useRef<OrbitControls | null>(null);
-  const modelRef = useRef<THREE.Object3D | null>(null);
+  const modelsRef = useRef<{ [key: string]: THREE.Object3D | null }>({});
   const [ready, setReady] = useState(false);
+
+  // 색상 매핑 정의
+  const colorMap: { [key: string]: string } = {
+    'bg-red-200': '#fecaca',
+    'bg-orange-200': '#fed7aa',
+    'bg-yellow-200': '#fef08a',
+    'bg-green-200': '#bbf7d0',
+    'bg-blue-200': '#bfdbfe',
+    'bg-purple-200': '#e9d5ff',
+    'bg-pink-200': '#fbcfe8',
+    'bg-[#E5E5E5]': '#E5E5E5'
+  };
 
   // 클라이언트 사이드 마운트 확인
   useEffect(() => {
@@ -133,13 +146,7 @@ const ThreeDFlowerViewer: React.FC<
   }, [isMounted]);
 
   useEffect(() => {
-    if (
-      !isMounted ||
-      !filePath ||
-      !sceneRef.current ||
-      !ready
-    )
-      return;
+    if (!isMounted || !filePath || !sceneRef.current || !ready) return;
 
     let disposed = false;
     let loader: GLTFLoader;
@@ -150,10 +157,7 @@ const ThreeDFlowerViewer: React.FC<
         filePath,
         (gltf: { scene: THREE.Object3D }) => {
           if (disposed) return;
-          // Remove previous model
-          if (modelRef.current && sceneRef.current) {
-            sceneRef.current.remove(modelRef.current);
-          }
+          
           const model = gltf.scene;
           // 모델의 바운딩 박스 중심을 (0,0,0)에 맞추기
           const box = new THREE.Box3().setFromObject(model);
@@ -169,58 +173,20 @@ const ThreeDFlowerViewer: React.FC<
           model.traverse((child: THREE.Object3D) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              const originalMaterial =
-                mesh.material as THREE.MeshStandardMaterial;
-              console.log('=== Material Details ===');
-              console.log(
-                'Material Type:',
-                originalMaterial.type,
-              );
-              console.log(
-                'Base Color:',
-                originalMaterial.color,
-              );
-              console.log(
-                'Emissive Color:',
-                originalMaterial.emissive,
-              );
-              console.log(
-                'Has Texture:',
-                !!originalMaterial.map,
-              );
-              if (originalMaterial.map) {
-                console.log(
-                  'Texture Source:',
-                  originalMaterial.map.source,
-                );
-                console.log(
-                  'Texture Image:',
-                  originalMaterial.map.image,
-                );
-              }
-              console.log(
-                'Metalness:',
-                originalMaterial.metalness,
-              );
-              console.log(
-                'Roughness:',
-                originalMaterial.roughness,
-              );
-              console.log(
-                'Full Material:',
-                originalMaterial,
-              );
-              console.log('=====================');
-
-              // 원본 재질을 그대로 사용
+              const originalMaterial = mesh.material as THREE.MeshStandardMaterial;
               mesh.material = originalMaterial;
               mesh.visible = true;
             }
             child.visible = true;
           });
 
+          // 이전 모델 제거
+          if (modelsRef.current[filePath] && sceneRef.current) {
+            sceneRef.current.remove(modelsRef.current[filePath]!);
+          }
+
           sceneRef.current!.add(model);
-          modelRef.current = model;
+          modelsRef.current[filePath] = model;
         },
         undefined,
         (error: unknown) => {
@@ -233,12 +199,24 @@ const ThreeDFlowerViewer: React.FC<
 
     return () => {
       disposed = true;
-      if (modelRef.current && sceneRef.current) {
-        sceneRef.current.remove(modelRef.current);
-        modelRef.current = null;
+      if (modelsRef.current[filePath] && sceneRef.current) {
+        sceneRef.current.remove(modelsRef.current[filePath]!);
+        modelsRef.current[filePath] = null;
       }
     };
   }, [filePath, ready, isMounted]);
+
+  // 배경색 변경을 위한 useEffect
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    
+    // 매핑된 색상값 가져오기
+    const hexColor = colorMap[color] || '#E5E5E5';
+    const threeColor = new THREE.Color(hexColor);
+    
+    // 배경색 설정
+    sceneRef.current.background = threeColor;
+  }, [color]);
 
   useEffect(() => {
     if (!isMounted) return;

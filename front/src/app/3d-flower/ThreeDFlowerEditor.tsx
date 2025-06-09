@@ -76,8 +76,13 @@ export default function ThreeDFlowerEditor() {
   const [tab, setTab] = useState('꽃');
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedModel, setSelectedModel] =
-    useState<DisplayItem | null>(null);
+  const [selectedModels, setSelectedModels] = useState<{
+    [key: string]: DisplayItem | null;
+  }>({
+    '꽃': null,
+    '포장지': null,
+    '장식': null
+  });
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [renderer, setRenderer] =
@@ -92,6 +97,99 @@ export default function ThreeDFlowerEditor() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const fetchAllCategories = async () => {
+      try {
+        setLoading(true);
+        
+        // 모든 카테고리의 데이터를 동시에 가져오기
+        const categoryPromises = Object.entries(CATEGORY_MAPPING).map(async ([key, value]) => {
+          const { data, error } = await supabase
+            .from('models')
+            .select('*')
+            .eq('category', key);
+
+          if (error) throw error;
+
+          const formattedItems: DisplayItem[] = (data as ModelItem[]).map((item) => ({
+            id: item.model_id,
+            name: item.description,
+            img: logoGithub,
+            filePath: item.file_path,
+          }));
+
+          return { category: value, items: formattedItems };
+        });
+
+        const results = await Promise.all(categoryPromises);
+        
+        // 현재 탭의 아이템만 설정
+        const currentTabItems = results.find(r => r.category === tab)?.items || [];
+        setItems(currentTabItems);
+
+        // 각 카테고리의 첫 번째 아이템 선택
+        const initialSelections = results.reduce((acc, { category, items }) => {
+          if (items.length > 0) {
+            acc[category] = items[0];
+          }
+          return acc;
+        }, {} as { [key: string]: DisplayItem });
+
+        setSelectedModels(initialSelections);
+      } catch (error) {
+        console.error('Error fetching items:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllCategories();
+  }, [isMounted]);
+
+  // 탭 변경 시 해당 카테고리의 아이템만 업데이트
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const fetchCategoryItems = async () => {
+      try {
+        setLoading(true);
+        const categoryKey = Object.entries(CATEGORY_MAPPING).find(
+          (entry) => entry[1] === tab
+        )?.[0];
+
+        if (!categoryKey) {
+          console.error('Invalid category');
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('models')
+          .select('*')
+          .eq('category', categoryKey);
+
+        if (error) throw error;
+
+        const formattedItems: DisplayItem[] = (data as ModelItem[]).map((item) => ({
+          id: item.model_id,
+          name: item.description,
+          img: logoGithub,
+          filePath: item.file_path,
+        }));
+
+        setItems(formattedItems);
+      } catch (error) {
+        console.error('Error fetching items:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategoryItems();
+  }, [tab, isMounted]);
 
   // 토스트 메시지 표시 함수
   const showToastMessage = (message: string) => {
@@ -116,7 +214,7 @@ export default function ThreeDFlowerEditor() {
 
   // 카카오톡 공유 핸들러
   const handleShare = async () => {
-    if (!selectedModel) {
+    if (!selectedModels[tab]) {
       showToastMessage(
         '공유할 꽃다발을 먼저 선택해주세요.',
       );
@@ -215,51 +313,11 @@ export default function ThreeDFlowerEditor() {
     initializeKakao();
   }, [isMounted]);
 
-  // 아이템 로드
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const fetchItems = async () => {
-      try {
-        setLoading(true);
-        const categoryKey = Object.entries(
-          CATEGORY_MAPPING,
-        ).find((entry) => entry[1] === tab)?.[0];
-
-        if (!categoryKey) {
-          console.error('Invalid category');
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from('models')
-          .select('*')
-          .eq('category', categoryKey);
-
-        if (error) throw error;
-
-        const formattedItems: DisplayItem[] = (
-          data as ModelItem[]
-        ).map((item) => ({
-          id: item.model_id,
-          name: item.description,
-          img: logoGithub,
-          filePath: item.file_path,
-        }));
-
-        setItems(formattedItems);
-      } catch (error) {
-        console.error('Error fetching items:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchItems();
-  }, [tab, isMounted]);
-
   const handleItemClick = (item: DisplayItem) => {
-    setSelectedModel(item);
+    setSelectedModels(prev => ({
+      ...prev,
+      [tab]: item
+    }));
   };
 
   const handleColorClick = (color: string) => {
@@ -336,7 +394,7 @@ export default function ThreeDFlowerEditor() {
                   <div
                     key={item.id}
                     className={`flex flex-col items-center bg-gray-50 rounded-lg p-2 border cursor-pointer transition-all h-24
-                      ${selectedModel?.id === item.id ? 'border-lime-500 bg-lime-50' : 'border-gray-200 hover:bg-gray-100'}`}
+                      ${selectedModels[tab]?.id === item.id ? 'border-lime-500 bg-lime-50' : 'border-gray-200 hover:bg-gray-100'}`}
                     onClick={() => handleItemClick(item)}
                   >
                     <div className='relative w-8 h-8 mb-1'>
@@ -381,30 +439,30 @@ export default function ThreeDFlowerEditor() {
           </div>
           {/* 3D 미리보기 영역 */}
           <div className='w-full h-full flex items-center justify-center relative overflow-hidden'>
-            {selectedModel ? (
-              <>
-                <ThreeDFlowerViewer
-                  key={selectedModel.filePath}
-                  filePath={selectedModel.filePath}
-                  onDownload={handleDownload}
-                  onCopy={handleCopy}
-                  onRendererReady={(
-                    renderer,
-                    scene,
-                    camera,
-                  ) => {
-                    setRenderer(renderer);
-                    setScene(scene);
-                    setCamera(camera);
-                  }}
-                />
-                <div className='absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full mt-2 text-center z-10'>
-                  <span className='text-sm font-medium text-gray-700'>
-                    {selectedModel.name}
-                  </span>
+            {Object.entries(selectedModels).map(([category, model]) => 
+              model && (
+                <div key={model.filePath} className="absolute inset-0">
+                  <ThreeDFlowerViewer
+                    key={model.filePath}
+                    filePath={model.filePath}
+                    onDownload={handleDownload}
+                    onCopy={handleCopy}
+                    color={selectedColor}
+                    onRendererReady={(renderer, scene, camera) => {
+                      setRenderer(renderer);
+                      setScene(scene);
+                      setCamera(camera);
+                    }}
+                  />
+                  <div className='absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full mt-2 text-center z-10'>
+                    <span className='text-sm font-medium text-gray-700'>
+                      {model.name}
+                    </span>
+                  </div>
                 </div>
-              </>
-            ) : (
+              )
+            )}
+            {Object.values(selectedModels).every(model => !model) && (
               <div className='text-gray-400 text-center'>
                 <p>왼쪽에서 모델을 선택해주세요</p>
               </div>
