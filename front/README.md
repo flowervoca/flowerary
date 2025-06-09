@@ -25,6 +25,15 @@ curl -fsSL https://get.pnpm.io/install.sh | sh -
 iwr https://get.pnpm.io/install.ps1 -useb | iex
 ```
 
+### 환경 변수 설정
+
+프로젝트 루트에 `.env.local` 파일을 생성하고 다음 환경 변수를 설정하세요:
+
+```bash
+# Spring Boot API 서버 URL
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+```
+
 ### 의존성 설치
 
 ```bash
@@ -152,9 +161,14 @@ src/
 │ ├── common/           # 공통 레이아웃 컴포넌트
 │ └── shared/           # 여러 페이지에서 재사용되는 컴포넌트
 ├── hooks/              # 커스텀 훅
+│ └── use-search.ts     # 검색 기능 관련 커스텀 훅
 ├── lib/                # 유틸리티 함수 및 헬퍼
 ├── types/              # 타입 정의
+│ └── search.ts         # 검색 관련 타입 정의
 ├── utils/              # 유틸리티 함수
+│ └── search-utils.ts   # 검색 관련 유틸리티 함수
+├── services/           # API 서비스 레이어
+│ └── search-api.ts     # 검색 API 호출 함수
 ├── config/             # 설정 파일
 ├── store/              # 상태 관리 (Zustand)
 ├── assets/             # 이미지, 폰트 등
@@ -544,6 +558,152 @@ function EnhancedInput({
 - [Tailwind CSS 공식 문서](https://tailwindcss.com/docs)
 - [Tailwind Merge GitHub](https://github.com/dcastil/tailwind-merge)
 
+## API 연동 가이드
+
+이 프로젝트는 Spring Boot 백엔드 서버와 REST API로 통신합니다. Next.js의 Route Handler를 통해 외부 API와 연동하고 있습니다.
+
+### API 구조
+
+```
+src/
+├── app/
+│   └── api/
+│       └── flower/
+│           └── searchFlowerAdvanced/
+│               └── route.ts    # 꽃 검색 API 엔드포인트
+└── services/
+    └── search-api.ts          # API 호출 함수들
+```
+
+### 환경 변수 설정
+
+API 연동을 위해 다음 환경 변수가 필요합니다:
+
+```bash
+# .env.local
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+```
+
+### API 사용 예시
+
+#### 1. Route Handler (서버 사이드)
+
+```typescript
+// app/api/flower/searchFlowerAdvanced/route.ts
+export async function POST(request: Request) {
+  try {
+    const searchParams = await request.json();
+
+    // Spring Boot API 호출
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/flower/searchFlowerAdvanced`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(searchParams),
+      },
+    );
+
+    const result = await response.json();
+    return Response.json(result);
+  } catch (error) {
+    return Response.json(
+      { error: 'API 호출 실패' },
+      { status: 500 },
+    );
+  }
+}
+```
+
+#### 2. API Service Layer
+
+```typescript
+// services/search-api.ts
+export async function searchFlowersAdvanced(
+  params: ISearchRequest,
+): Promise<IFlowerResponse> {
+  const response = await fetch(
+    '/api/flower/searchFlowerAdvanced',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('검색 요청에 실패했습니다.');
+  }
+
+  return response.json();
+}
+```
+
+#### 3. 커스텀 훅에서 API 사용
+
+```typescript
+// hooks/use-search.ts
+export function useSearch() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [flowers, setFlowers] = useState<IFlower[]>([]);
+
+  const handleSearch = async (params: ISearchRequest) => {
+    setIsLoading(true);
+    try {
+      const result = await searchFlowersAdvanced(params);
+      setFlowers(result.data || []);
+    } catch (error) {
+      console.error('검색 오류:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { flowers, isLoading, handleSearch };
+}
+```
+
+### API 응답 데이터 구조
+
+```typescript
+// Spring Boot API 응답 구조
+interface IFlowerResponse {
+  data: IFlower[];
+}
+
+interface IFlower {
+  f_low_nm: string; // 꽃 이름
+  f_low_lang: string; // 꽃말
+  pic_info: string; // 이미지 URL
+  regist_de: string; // 등록일
+  // ... 기타 필드
+}
+```
+
+### 에러 처리
+
+API 호출 시 다음과 같은 방식으로 에러를 처리합니다:
+
+1. **Route Handler에서의 에러 처리**: 서버 오류 시 적절한 HTTP 상태 코드 반환
+2. **Service Layer에서의 에러 처리**: HTTP 응답 상태 확인 및 에러 throw
+3. **UI Layer에서의 에러 처리**: try-catch 문을 통한 사용자 친화적 에러 메시지 표시
+
+### 검색 기능 구현
+
+꽃 검색 기능은 다음과 같은 구조로 구현되어 있습니다:
+
+```
+검색 UI → useSearch 훅 → searchAPI → Route Handler → Spring Boot API
+```
+
+- **다중 검색 조건 지원**: 꽃 이름, 꽃말, 개화월, 개화일별 검색
+- **실시간 필터링**: 검색 결과에 대한 클라이언트 사이드 필터링
+- **상태 관리**: 검색 상태, 로딩 상태, 에러 상태 통합 관리
+
 ## Tailwind Merge (cn 유틸리티) 사용 가이드
 
 이 프로젝트에서는 Tailwind CSS 클래스를 조건부로 적용하거나 병합하기 위해 `cn` 유틸리티 함수를 사용합니다. 이 함수는 `clsx`와 `tailwind-merge` 라이브러리를 결합하여 더 강력한 기능을 제공합니다.
@@ -555,3 +715,75 @@ function EnhancedInput({
 - 조건부 클래스 적용
 - 커스텀 컴포넌트에서의 활용
 - 클래스 오버라이드 기능
+
+## 프로젝트 아키텍처
+
+### 검색 기능 아키텍처
+
+이 프로젝트의 검색 기능은 다음과 같은 레이어로 구성되어 있습니다:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     UI Layer                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │ SearchForm      │  │ SearchFilters   │  │ SearchResults│ │
+│  │ Component       │  │ Component       │  │ Component    │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────┐
+│                   Hook Layer                                │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                 useSearch Hook                          │ │
+│  │  • 검색 상태 관리                                          │ │
+│  │  • 검색 로직 처리                                          │ │
+│  │  • 에러 처리                                             │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────┐
+│                 Service Layer                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                search-api.ts                            │ │
+│  │  • API 호출 함수                                          │ │
+│  │  • 요청/응답 데이터 변환                                    │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────┐
+│                 API Layer                                   │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │            Route Handler (Next.js)                     │ │
+│  │  • /api/flower/searchFlowerAdvanced                    │ │
+│  │  • 외부 API 프록시 역할                                   │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────┐
+│               External API                                  │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Spring Boot Server                        │ │
+│  │  • 꽃 검색 API                                           │ │
+│  │  • 데이터베이스 연동                                       │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 폴더별 역할
+
+- **`/types`**: TypeScript 인터페이스와 타입 정의
+- **`/utils`**: 순수 함수로 구성된 유틸리티 모음
+- **`/services`**: API 통신을 담당하는 서비스 레이어
+- **`/hooks`**: 비즈니스 로직과 상태 관리를 담당하는 커스텀 훅
+- **`/components`**: 재사용 가능한 UI 컴포넌트
+- **`/app/api`**: Next.js Route Handler로 구현된 API 엔드포인트
+
+### 데이터 흐름
+
+1. **사용자 입력** → UI 컴포넌트에서 검색 조건 입력
+2. **검색 실행** → useSearch 훅에서 검색 로직 처리
+3. **API 호출** → search-api.ts를 통해 내부 API 호출
+4. **프록시 요청** → Route Handler가 외부 Spring Boot API 호출
+5. **데이터 변환** → 응답 데이터를 프론트엔드 형식으로 변환
+6. **상태 업데이트** → 검색 결과를 컴포넌트 상태에 반영
+7. **UI 렌더링** → 검색 결과를 사용자에게 표시
