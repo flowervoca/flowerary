@@ -4,7 +4,8 @@ module.exports = {
       'mblogthumb-phinf.pstatic.net',
       'encrypted-tbn0.gstatic.com',
       'img.freepik.com',
-      'blog.kakaocdn.net'
+      'blog.kakaocdn.net',
+      'www.nihhs.go.kr'
     ],
   },
 }; 
