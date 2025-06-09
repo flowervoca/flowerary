@@ -49,7 +49,7 @@ const ThreeDFlowerViewer: React.FC<
     async function setupThree() {
       // Scene
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xffffff);
+      scene.background = null;
       sceneRef.current = scene;
 
       // Camera
@@ -68,13 +68,13 @@ const ThreeDFlowerViewer: React.FC<
       // Renderer
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
-        alpha: false,
+        alpha: true,
         preserveDrawingBuffer: true,
       });
       renderer.setSize(width, height);
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
-      renderer.setClearColor(0xffffff, 1);
+      renderer.setClearColor(0x000000, 0);
       mountRef.current!.appendChild(renderer.domElement);
       rendererRef.current = renderer;
 

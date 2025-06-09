@@ -53,14 +53,13 @@ const SaveIcon = () => <DownloadIcon className='w-5 h-5' />;
 const ShareIcon = () => <Share1Icon className='w-5 h-5' />;
 
 const COLORS = [
-  'bg-red-500',
-  'bg-orange-400',
-  'bg-yellow-300',
-  'bg-green-600',
-  'bg-blue-500',
-  'bg-purple-500',
-  'bg-pink-300',
-  'bg-gray-400',
+  'bg-red-200',
+  'bg-orange-200',
+  'bg-yellow-200',
+  'bg-green-200',
+  'bg-blue-200',
+  'bg-purple-200',
+  'bg-pink-200',
 ];
 
 // 카테고리 매핑
@@ -85,6 +84,8 @@ export default function ThreeDFlowerEditor() {
     useState<WebGLRenderer | null>(null);
   const [scene, setScene] = useState<Scene | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
+  const [selectedColor, setSelectedColor] =
+    useState<string>('bg-[#E5E5E5]');
 
   // 클라이언트 사이드 마운트 확인
   useEffect(() => {
@@ -260,6 +261,10 @@ export default function ThreeDFlowerEditor() {
     setSelectedModel(item);
   };
 
+  const handleColorClick = (color: string) => {
+    setSelectedColor(color);
+  };
+
   if (!isMounted) {
     return null; // 또는 로딩 컴포넌트를 표시
   }
@@ -334,29 +339,32 @@ export default function ThreeDFlowerEditor() {
         </aside>
 
         {/* Main Canvas */}
-        <section className='flex-1 h-full bg-[#E5E5E5] rounded-2xl relative flex flex-col items-center justify-center'>
+        <section
+          className={`flex-1 h-full ${selectedColor} rounded-2xl relative flex flex-col items-center justify-center`}
+        >
           {/* 색상 선택 */}
-          <div className='absolute left-8 top-1/2 -translate-y-1/2 flex flex-col items-center z-10'>
+          <div className='absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center z-10'>
             {/* 무지개 버튼 */}
             <button onClick={() => setColorOpen((v) => !v)}>
               <RainbowIcon />
             </button>
             {/* 색상 리스트 (펼쳐졌을 때만) */}
             {colorOpen && (
-              <div className='flex flex-col gap-2 mt-2'>
+              <div className='flex flex-col gap-2 mt-2 absolute top-full'>
                 {COLORS.map((c, i) => (
                   <button
                     key={i}
-                    className={`w-6 h-6 rounded-full ${c} border-2 border-white`}
+                    className={`w-6 h-6 rounded-full ${c} border-2 ${selectedColor === c ? 'border-black' : 'border-white'} cursor-pointer`}
+                    onClick={() => handleColorClick(c)}
                   />
                 ))}
               </div>
             )}
           </div>
           {/* 3D 미리보기 영역 */}
-          <div className='w-[700px] h-[500px] flex items-center justify-center relative overflow-hidden'>
+          <div className='w-full h-full flex items-center justify-center relative overflow-hidden'>
             {selectedModel ? (
-              <div className='w-full h-full relative overflow-hidden'>
+              <>
                 <ThreeDFlowerViewer
                   key={selectedModel.filePath}
                   filePath={selectedModel.filePath}
@@ -377,7 +385,7 @@ export default function ThreeDFlowerEditor() {
                     {selectedModel.name}
                   </span>
                 </div>
-              </div>
+              </>
             ) : (
               <div className='text-gray-400 text-center'>
                 <div className='relative w-24 h-24 mb-4 mx-auto'>
@@ -394,21 +402,21 @@ export default function ThreeDFlowerEditor() {
             )}
           </div>
           {/* Undo/Redo */}
-          <div className='absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4'>
-            <button className='w-10 h-10 rounded-full bg-white shadow flex items-center justify-center'>
+          <div className='absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4'>
+            <button className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'>
               <UndoIcon />
             </button>
-            <button className='w-10 h-10 rounded-full bg-white shadow flex items-center justify-center'>
+            <button className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'>
               <RedoIcon />
             </button>
           </div>
           {/* 오른쪽 하단 버튼 */}
-          <div className='absolute bottom-8 right-8 flex gap-4'>
-            <button className='w-10 h-10 rounded-full bg-white shadow flex items-center justify-center'>
+          <div className='absolute bottom-4 right-8 flex gap-4'>
+            <button className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'>
               <ResetIcon />
             </button>
             <button
-              className='w-10 h-10 rounded-full bg-white shadow flex items-center justify-center'
+              className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'
               onClick={() =>
                 (window as any).downloadFlower?.(
                   title || '3D-Flowerary',
@@ -418,7 +426,7 @@ export default function ThreeDFlowerEditor() {
               <SaveIcon />
             </button>
             <button
-              className='w-10 h-10 rounded-full bg-white shadow flex items-center justify-center'
+              className='w-10 h-10 rounded-full bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center'
               onClick={handleShare}
             >
               <Image
