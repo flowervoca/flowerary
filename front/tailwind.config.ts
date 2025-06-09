@@ -28,7 +28,7 @@ const config: Config = {
         ],
       },
       colors: {
-        primary: '#3E7959',
+        primary: 'hsl(var(--primary))',
         border: 'hsl(var(--border))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
