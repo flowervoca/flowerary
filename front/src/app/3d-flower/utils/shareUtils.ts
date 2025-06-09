@@ -12,14 +12,25 @@ if (!KAKAO_JAVASCRIPT_KEY) {
 }
 
 export const initKakao = async () => {
-  if (typeof window === 'undefined' || !window.Kakao) {
+  if (typeof window === 'undefined') {
     return false;
   }
 
-  if (!window.Kakao.isInitialized()) {
-    window.Kakao.init(KAKAO_JAVASCRIPT_KEY);
+  try {
+    if (!window.Kakao) {
+      console.error('Kakao SDK not loaded');
+      return false;
+    }
+
+    if (!window.Kakao.isInitialized()) {
+      window.Kakao.init(KAKAO_JAVASCRIPT_KEY);
+      console.log('Kakao SDK initialized');
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize Kakao SDK:', error);
+    return false;
   }
-  return true;
 };
 
 export const shareToKakao = async (
@@ -27,29 +38,37 @@ export const shareToKakao = async (
   description: string,
   imageUrl: string,
 ) => {
-  const initialized = await initKakao();
-  if (!initialized) return false;
+  try {
+    const initialized = await initKakao();
+    if (!initialized) {
+      console.error('Kakao SDK not initialized');
+      return false;
+    }
 
-  window.Kakao.Share.sendDefault({
-    objectType: 'feed',
-    content: {
-      title,
-      description,
-      imageUrl,
-      link: {
-        mobileWebUrl: window.location.href,
-        webUrl: window.location.href,
-      },
-    },
-    buttons: [
-      {
-        title: '꽃다발 감상하기',
+    window.Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title,
+        description,
+        imageUrl,
         link: {
           mobileWebUrl: window.location.href,
           webUrl: window.location.href,
         },
       },
-    ],
-  });
-  return true;
+      buttons: [
+        {
+          title: '꽃다발 감상하기',
+          link: {
+            mobileWebUrl: window.location.href,
+            webUrl: window.location.href,
+          },
+        },
+      ],
+    });
+    return true;
+  } catch (error) {
+    console.error('Failed to share to Kakao:', error);
+    return false;
+  }
 };

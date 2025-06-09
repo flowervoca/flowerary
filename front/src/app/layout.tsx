@@ -1,3 +1,4 @@
+import './globals.css';
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 
@@ -17,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='ko' suppressHydrationWarning>
-      <body className={`antialiased`} suppressHydrationWarning>
+      <body
+        className={`antialiased`}
+        suppressHydrationWarning
+      >
         {children}
         <Toaster />
       </body>

@@ -22,6 +22,7 @@ interface ThreeDFlowerViewerProps {
 const ThreeDFlowerViewer: React.FC<
   ThreeDFlowerViewerProps
 > = ({ filePath, onDownload, onCopy, onRendererReady }) => {
+  const [isMounted, setIsMounted] = useState(false);
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(
     null,
@@ -34,8 +35,13 @@ const ThreeDFlowerViewer: React.FC<
   const modelRef = useRef<THREE.Object3D | null>(null);
   const [ready, setReady] = useState(false);
 
+  // 클라이언트 사이드 마운트 확인
   useEffect(() => {
-    if (!mountRef.current) return;
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted || !mountRef.current) return;
 
     let controls: OrbitControls;
     let cleanup: (() => void) | undefined;
@@ -88,22 +94,6 @@ const ThreeDFlowerViewer: React.FC<
       controls.dampingFactor = 0.1;
       controlsRef.current = controls;
 
-      // 테스트용 구체 추가 (중앙에 초록색)
-      const testGeometry = new THREE.SphereGeometry(
-        1,
-        32,
-        32,
-      );
-      const testMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00ff00,
-      });
-      const testMesh = new THREE.Mesh(
-        testGeometry,
-        testMaterial,
-      );
-      testMesh.position.set(0, 0, 0);
-      scene.add(testMesh);
-
       // Animation loop
       let frameId: number;
       const animate = () => {
@@ -140,12 +130,20 @@ const ThreeDFlowerViewer: React.FC<
     return () => {
       if (cleanup) cleanup();
     };
-  }, []);
+  }, [isMounted]);
 
   useEffect(() => {
-    if (!filePath || !sceneRef.current || !ready) return;
+    if (
+      !isMounted ||
+      !filePath ||
+      !sceneRef.current ||
+      !ready
+    )
+      return;
+
     let disposed = false;
     let loader: GLTFLoader;
+
     async function loadModel() {
       loader = new GLTFLoader();
       loader.load(
@@ -171,15 +169,51 @@ const ThreeDFlowerViewer: React.FC<
           model.traverse((child: THREE.Object3D) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              mesh.material = new THREE.MeshBasicMaterial({
-                color: 0xff00ff,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 1.0,
-                depthTest: true,
-                depthWrite: true,
-                wireframe: true,
-              });
+              const originalMaterial =
+                mesh.material as THREE.MeshStandardMaterial;
+              console.log('=== Material Details ===');
+              console.log(
+                'Material Type:',
+                originalMaterial.type,
+              );
+              console.log(
+                'Base Color:',
+                originalMaterial.color,
+              );
+              console.log(
+                'Emissive Color:',
+                originalMaterial.emissive,
+              );
+              console.log(
+                'Has Texture:',
+                !!originalMaterial.map,
+              );
+              if (originalMaterial.map) {
+                console.log(
+                  'Texture Source:',
+                  originalMaterial.map.source,
+                );
+                console.log(
+                  'Texture Image:',
+                  originalMaterial.map.image,
+                );
+              }
+              console.log(
+                'Metalness:',
+                originalMaterial.metalness,
+              );
+              console.log(
+                'Roughness:',
+                originalMaterial.roughness,
+              );
+              console.log(
+                'Full Material:',
+                originalMaterial,
+              );
+              console.log('=====================');
+
+              // 원본 재질을 그대로 사용
+              mesh.material = originalMaterial;
               mesh.visible = true;
             }
             child.visible = true;
@@ -194,7 +228,9 @@ const ThreeDFlowerViewer: React.FC<
         },
       );
     }
+
     loadModel();
+
     return () => {
       disposed = true;
       if (modelRef.current && sceneRef.current) {
@@ -202,9 +238,11 @@ const ThreeDFlowerViewer: React.FC<
         modelRef.current = null;
       }
     };
-  }, [filePath, ready]);
+  }, [filePath, ready, isMounted]);
 
   useEffect(() => {
+    if (!isMounted) return;
+
     if (
       rendererRef.current &&
       sceneRef.current &&
@@ -216,7 +254,7 @@ const ThreeDFlowerViewer: React.FC<
         cameraRef.current,
       );
     }
-  }, [onRendererReady]);
+  }, [onRendererReady, isMounted]);
 
   // 다운로드 함수 추가
   const handleDownload = (title?: string) => {
@@ -253,11 +291,15 @@ const ThreeDFlowerViewer: React.FC<
 
   // 컴포넌트 외부로 함수 노출
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).downloadFlower = handleDownload;
-      (window as any).copyFlower = handleCopy;
-    }
-  }, []);
+    if (!isMounted || typeof window === 'undefined') return;
+
+    (window as any).downloadFlower = handleDownload;
+    (window as any).copyFlower = handleCopy;
+  }, [isMounted]);
+
+  if (!isMounted) {
+    return null; // 또는 로딩 컴포넌트를 표시
+  }
 
   return (
     <div

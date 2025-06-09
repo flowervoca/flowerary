@@ -4,8 +4,13 @@ export function KakaoSDKLoader() {
   if (typeof window === 'undefined') return;
 
   // 이미 로드되어 있는지 확인
-  if (document.querySelector('script[src*="kakao.min.js"]'))
+  if (
+    document.querySelector('script[src*="kakao.min.js"]')
+  ) {
+    // 이미 로드되어 있다면 이벤트 발생
+    window.dispatchEvent(new Event('kakao-sdk-loaded'));
     return;
+  }
 
   const script = document.createElement('script');
   script.src =

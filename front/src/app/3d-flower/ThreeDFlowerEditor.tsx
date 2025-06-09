@@ -71,6 +71,7 @@ const CATEGORY_MAPPING = {
 };
 
 export default function ThreeDFlowerEditor() {
+  const [isMounted, setIsMounted] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [tab, setTab] = useState('꽃');
@@ -84,6 +85,11 @@ export default function ThreeDFlowerEditor() {
     useState<WebGLRenderer | null>(null);
   const [scene, setScene] = useState<Scene | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
+
+  // 클라이언트 사이드 마운트 확인
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 토스트 메시지 표시 함수
   const showToastMessage = (message: string) => {
@@ -179,7 +185,38 @@ export default function ThreeDFlowerEditor() {
     }
   };
 
+  // 카카오 SDK 초기화
   useEffect(() => {
+    if (!isMounted) return;
+
+    const initializeKakao = async () => {
+      // SDK 로드 완료 이벤트 대기
+      await new Promise<void>((resolve) => {
+        if (window.Kakao) {
+          resolve();
+        } else {
+          window.addEventListener(
+            'kakao-sdk-loaded',
+            () => {
+              resolve();
+            },
+            { once: true },
+          );
+        }
+      });
+
+      const success = await initKakao();
+      if (!success) {
+        console.error('카카오 SDK 초기화 실패');
+      }
+    };
+    initializeKakao();
+  }, [isMounted]);
+
+  // 아이템 로드
+  useEffect(() => {
+    if (!isMounted) return;
+
     const fetchItems = async () => {
       try {
         setLoading(true);
@@ -199,7 +236,6 @@ export default function ThreeDFlowerEditor() {
 
         if (error) throw error;
 
-        // 데이터를 items 형식으로 변환
         const formattedItems: DisplayItem[] = (
           data as ModelItem[]
         ).map((item) => ({
@@ -218,22 +254,15 @@ export default function ThreeDFlowerEditor() {
     };
 
     fetchItems();
-  }, [tab]);
-
-  // 카카오 SDK 초기화
-  useEffect(() => {
-    const initializeKakao = async () => {
-      const success = await initKakao();
-      if (!success) {
-        console.error('카카오 SDK 초기화 실패');
-      }
-    };
-    initializeKakao();
-  }, []);
+  }, [tab, isMounted]);
 
   const handleItemClick = (item: DisplayItem) => {
     setSelectedModel(item);
   };
+
+  if (!isMounted) {
+    return null; // 또는 로딩 컴포넌트를 표시
+  }
 
   return (
     <div className='w-full h-[calc(100vh-120px)] flex items-center justify-center bg-[#F5F5F5] py-8'>
@@ -261,11 +290,13 @@ export default function ThreeDFlowerEditor() {
           </div>
           {/* 검색 */}
           <div className='mb-2 flex items-center gap-2'>
-            <input
-              className='w-full border rounded px-2 py-1 text-sm'
-              placeholder='검색'
-            />
-            <MagnifyingGlassIcon className='w-5 h-5 text-gray-600' />
+            <div className='flex items-center w-full border border-primary rounded-full px-4 py-2 bg-background'>
+              <input
+                className='w-full border-none focus:ring-0 focus:outline-none bg-transparent flex-1 text-base text-foreground placeholder:text-left'
+                placeholder='검색'
+              />
+              <MagnifyingGlassIcon className='w-5 h-5 text-primary cursor-pointer' />
+            </div>
           </div>
           {/* 아이템 리스트 */}
           <div className='flex-1 overflow-y-auto grid grid-cols-3 gap-2 auto-rows-min'>
@@ -282,7 +313,7 @@ export default function ThreeDFlowerEditor() {
                 <div
                   key={item.id}
                   className={`flex flex-col items-center bg-gray-50 rounded-lg p-2 border cursor-pointer transition-all h-24
-                    ${selectedModel?.id === item.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-100'}`}
+                    ${selectedModel?.id === item.id ? 'border-lime-500 bg-lime-50' : 'border-gray-200 hover:bg-gray-100'}`}
                   onClick={() => handleItemClick(item)}
                 >
                   <div className='relative w-8 h-8 mb-1'>
@@ -349,7 +380,7 @@ export default function ThreeDFlowerEditor() {
               </div>
             ) : (
               <div className='text-gray-400 text-center'>
-                <div className='relative w-24 h-24 mb-4'>
+                <div className='relative w-24 h-24 mb-4 mx-auto'>
                   <Image
                     src={logoGithub}
                     alt='3D 미리보기'
