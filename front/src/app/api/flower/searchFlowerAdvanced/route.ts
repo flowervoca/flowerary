@@ -48,13 +48,6 @@ export async function POST(request: NextRequest) {
     const body: ISearchFlowerRequest = await request.json();
     const { flowNm, tagName, fmonth, fday } = body;
 
-    console.log('검색 요청:', {
-      flowNm,
-      tagName,
-      fmonth,
-      fday,
-    });
-
     // 검색 조건이 하나도 없는 경우
     if (!flowNm && !tagName && !fmonth && !fday) {
       return NextResponse.json(
@@ -67,26 +60,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 날짜 검색인지 확인
-    const isDateSearch =
-      fmonth && fday && !flowNm && !tagName;
-    console.log('검색 타입 분석:', {
-      isDateSearch,
-      hasFlowNm: !!flowNm,
-      hasTagName: !!tagName,
-      hasFmonth: !!fmonth,
-      hasFday: !!fday,
-      fmonthValue: fmonth,
-      fdayValue: fday,
-    });
-
     // 외부 API URL 설정 (환경변수에서 가져오거나 기본값 사용)
     const apiBaseUrl =
       process.env.NEXT_PUBLIC_API_BASE_URL ||
       'http://localhost:8080';
     const apiUrl = `${apiBaseUrl}/api/flower/searchFlowerAdvanced`;
-
-    console.log('외부 API 호출:', apiUrl);
 
     // 외부 REST API 호출
     const requestBody = {
@@ -96,11 +74,6 @@ export async function POST(request: NextRequest) {
       fday: fday || '',
     };
 
-    console.log(
-      'Spring Boot API로 전송할 요청 데이터:',
-      requestBody,
-    );
-
     const apiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -108,8 +81,6 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(requestBody),
     });
-
-    console.log('외부 API 응답 상태:', apiResponse.status);
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
@@ -134,22 +105,6 @@ export async function POST(request: NextRequest) {
     }
 
     const responseData = await apiResponse.json();
-    console.log(
-      '외부 API 응답 데이터 (전체):',
-      JSON.stringify(responseData, null, 2),
-    );
-    console.log('응답 구조 분석:', {
-      hasData: !!responseData.data,
-      hasFlowers: !!(
-        responseData.data && responseData.data.flowers
-      ),
-      flowersLength:
-        responseData.data && responseData.data.flowers
-          ? responseData.data.flowers.length
-          : 0,
-      resultMsg: responseData.resultMsg,
-      totalCount: responseData.totalCount,
-    });
 
     // Spring Boot API 응답 구조에 맞게 데이터 변환
     if (
@@ -172,8 +127,6 @@ export async function POST(request: NextRequest) {
           }),
         );
 
-      console.log('변환된 꽃 데이터:', transformedFlowers);
-
       const response: IApiResponse = {
         resultMsg: responseData.resultMsg || '검색 성공',
         totalCount:
@@ -184,7 +137,6 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(response);
     } else {
-      console.log('예상치 못한 응답 구조:', responseData);
       return NextResponse.json({
         resultMsg: '해당 꽃이 없습니다.',
         totalCount: 0,
