@@ -23,8 +23,21 @@ export async function POST(request: NextRequest) {
       },
     );
 
+    // API 응답이 실패한 경우, 실제 상태 코드로 응답
     if (!response.ok) {
-      throw new Error(`API 호출 실패: ${response.status}`);
+      const errorData = await response
+        .json()
+        .catch(() => ({}));
+      return Response.json(
+        {
+          resultMsg:
+            errorData.message ||
+            '서버 오류가 발생했습니다.',
+          totalCount: 0,
+          data: [],
+        },
+        { status: response.status },
+      );
     }
 
     const result = await response.json();
@@ -39,6 +52,8 @@ export async function POST(request: NextRequest) {
     return Response.json(transformedResult);
   } catch (error) {
     console.error('Article filter API 오류:', error);
+
+    // 네트워크 오류나 예상치 못한 오류는 500으로 처리
     return Response.json(
       {
         resultMsg: 'API 호출에 실패했습니다.',
