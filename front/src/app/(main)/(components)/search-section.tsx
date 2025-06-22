@@ -19,33 +19,25 @@ export function SearchSection() {
 
           {/* 탭 전환 섹션 */}
           <div className="flex justify-center mb-4 w-[280px] h-[52px]">
-            <div className="flex rounded-full p-1 bg-[#D8E4DE] gap-0 w-full h-full">
+            <div className="flex rounded-full p-1 bg-[#D8E4DE] gap-0 w-full h-full relative">
+              {/* 슬라이딩 배경 */}
+              <div 
+                className={`absolute h-[calc(100%-0.5rem)] rounded-full bg-white transition-all duration-300 ease-in-out ${
+                  activeTab === 'flower' ? 'left-1 w-[calc(50%-0.5rem)]' : 'left-[calc(50%+0.25rem)] w-[calc(50%-0.5rem)]'
+                }`}
+              />
               <Button
                 variant="ghost"
-                className={`rounded-full px-4 md:px-6 font-semibold shadow-none border-none transition-all w-1/2 h-full
-                  ${activeTab === 'flower' ? 'bg-white text-primary' : 'bg-transparent'}
-                `}
-                style={{
-                  color: activeTab === 'flower' ? '' : '#6F8278',
-                  backgroundColor: activeTab === 'flower' ? '#FFFFFF' : 'transparent',
-                  border: 'none',
-                  boxShadow: 'none',
-                }}
+                className={`rounded-full px-4 md:px-6 font-semibold shadow-none border-none transition-all w-1/2 h-full relative z-10
+                  ${activeTab === 'flower' ? 'text-primary' : 'text-[#6F8278]'}`}
                 onClick={() => setActiveTab('flower')}
               >
-                꽃 검색
+                꽃이름 검색
               </Button>
               <Button
                 variant="ghost"
-                className={`rounded-full px-4 md:px-6 font-semibold shadow-none border-none transition-all w-1/2 h-full
-                  ${activeTab === 'meaning' ? 'bg-white text-primary' : 'bg-transparent'}
-                `}
-                style={{
-                  color: activeTab === 'meaning' ? '' : '#6F8278',
-                  backgroundColor: activeTab === 'meaning' ? '#FFFFFF' : 'transparent',
-                  border: 'none',
-                  boxShadow: 'none',
-                }}
+                className={`rounded-full px-4 md:px-6 font-semibold shadow-none border-none transition-all w-1/2 h-full relative z-10
+                  ${activeTab === 'meaning' ? 'text-primary' : 'text-[#6F8278]'}`}
                 onClick={() => setActiveTab('meaning')}
               >
                 꽃말 검색
