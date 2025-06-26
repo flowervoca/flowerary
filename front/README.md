@@ -6,6 +6,7 @@
 - [TypeScript](https://www.typescriptlang.org/) - 정적 타입 지원
 - [Tailwind CSS](https://tailwindcss.com/) - 유틸리티 기반 CSS 프레임워크
 - [shadcn/ui](https://ui.shadcn.com/) - 재사용 가능한 UI 컴포넌트
+- [Three.js](https://threejs.org/) - 3D 그래픽 라이브러리
 - [pnpm](https://pnpm.io/ko/) - 빠르고 디스크 공간 효율적인 패키지 매니저
 
 ## 시작하기
@@ -47,6 +48,43 @@ pnpm dev
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 결과를 확인하세요.
+
+## 3D 꽃 기능 아키텍처
+
+### 리팩토링된 구조
+
+3D 꽃 관련 코드는 다음과 같은 모듈화된 구조로 리팩토링되었습니다:
+
+```
+src/app/3d-flower/
+├── ThreeDFlowerViewer/
+│   ├── index.tsx                    # 메인 컴포넌트
+│   ├── hooks/
+│   │   ├── useThreeSetup.ts         # Three.js 초기화
+│   │   ├── useModelLoading.ts       # 모델 로딩 관리
+│   │   ├── useModelInteraction.ts   # 모델 상호작용
+│   │   └── useDownloadUtils.ts      # 다운로드/복사 기능
+│   └── components/
+│       ├── ModelManager.tsx         # 모델 색상 관리
+│       └── SceneManager.tsx         # 씬 배경색 관리
+├── ThreeDFlowerEditor.tsx           # 에디터 컴포넌트
+└── utils/
+    ├── downloadUtils.ts             # 다운로드 유틸리티
+    └── shareUtils.ts                # 공유하기기 유틸리티
+
+src/utils/3d-flower-constants/
+├── index.ts                         # 메인 export
+├── colors.ts                        # 색상 관련 상수
+├── three-config.ts                  # Three.js 설정
+├── model-config.ts                  # 모델 설정
+└── ui-config.ts                     # UI 관련 설정
+
+src/hooks/
+└── use-3d-flower.ts                 # 3D 꽃 커스텀 훅
+
+src/types/
+└── 3d-flower.ts                     # 3D 꽃 타입 정의
+```
 
 ## shadcn/ui 컴포넌트 사용하기
 
