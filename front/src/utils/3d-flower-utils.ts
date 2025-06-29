@@ -33,29 +33,15 @@ const isValidModelType = (
 /**
  * 모델 아이템 포맷팅 함수
  * @param data - 포맷팅할 모델 아이템 배열
- * @param category - 카테고리 (선택사항)
  * @returns 포맷팅된 디스플레이 아이템 배열
  */
 export const formatModelItems = (
   data: ModelItem[],
-  category?: string,
 ): DisplayItem[] => {
-  // 카테고리별 이모지 매핑
-  const categoryEmojis: { [key: string]: string } = {
-    FL: '🌺', // 꽃
-    WR: '🎀', // 포장지
-    DE: '✨', // 장식
-  };
-
-  const defaultEmoji = '🌺';
-  const emoji = category
-    ? categoryEmojis[category] || defaultEmoji
-    : defaultEmoji;
-
   return data.map((item) => ({
     id: item.model_id,
     name: item.description,
-    img: emoji,
+    img: item.thumbnail,
     filePath: item.file_path,
   }));
 };
@@ -192,9 +178,6 @@ export const adjustModelTransform = (
   type: ModelType,
 ): void => {
   if (!isValidModelType(type)) {
-    console.warn(
-      `Invalid model type for transform: ${type}`,
-    );
     return;
   }
 

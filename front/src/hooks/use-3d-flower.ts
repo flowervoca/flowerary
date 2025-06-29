@@ -67,7 +67,6 @@ export const use3DFlower = () => {
 
           const formattedItems = formatModelItems(
             data as ModelItem[],
-            key,
           );
           return { category: value, items: formattedItems };
         });
@@ -85,7 +84,7 @@ export const use3DFlower = () => {
         setAllItems(allItemsData);
         setSelectedModels(createInitialSelections(results));
       } catch (error) {
-        console.error('Error fetching items:', error);
+        // Error fetching items
       } finally {
         setLoading(false);
       }

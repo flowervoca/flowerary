@@ -1,6 +1,4 @@
-import { StaticImageData } from 'next/image';
 import * as THREE from 'three';
-import { ComponentType } from 'react';
 
 // 모델 아이템 인터페이스
 export interface ModelItem {
@@ -8,13 +6,14 @@ export interface ModelItem {
   description: string;
   category: string;
   file_path: string;
+  thumbnail: string;
 }
 
 // 디스플레이 아이템 인터페이스
 export interface DisplayItem {
   id: number;
   name: string;
-  img: ComponentType | StaticImageData | string;
+  img: string;
   filePath: string;
 }
 

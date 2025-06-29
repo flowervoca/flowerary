@@ -29,6 +29,7 @@ import {
   shareToKakao,
 } from './utils/shareUtils';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import ColorThief from 'colorthief';
 
 /**
  * 색상 값을 안전하게 변환하는 유틸리티 함수
@@ -44,6 +45,55 @@ const getSafeColor = (color: string): string => {
   const mappedColor =
     COLOR_MAP[color as keyof typeof COLOR_MAP];
   return mappedColor || '#FFB6C1';
+};
+
+/**
+ * RGB 값을 HEX로 변환하는 함수
+ * @param r - 빨강 값 (0-255)
+ * @param g - 초록 값 (0-255)
+ * @param b - 파랑 값 (0-255)
+ * @returns HEX 색상 코드
+ */
+const rgbToHex = (r: number, g: number, b: number): string => {
+  return (
+    '#' +
+    [r, g, b]
+      .map((x) => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      })
+      .join('')
+  );
+};
+
+/**
+ * 꽃 이미지에서 색상들을 추출하는 함수 (Color Thief 사용, HEX 반환)
+ * @param imageUrl - 꽃 이미지 URL
+ * @returns 추출된 색상 배열 (HEX)
+ */
+const extractColorsFromFlower = async (imageUrl: string): Promise<string[]> => {
+  if (typeof window === 'undefined') return [];
+
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = async () => {
+      try {
+        const colorThief = new ColorThief();
+        // 대표색 6개 추출
+        const palette = colorThief.getPalette(img, 6);
+        // [ [r,g,b], ... ] → [ '#rrggbb', ... ]
+        const colors = palette.map(([r, g, b]: number[]) => rgbToHex(r, g, b));
+        resolve(colors);
+      } catch {
+        resolve([]);
+      }
+    };
+    img.onerror = () => {
+      resolve([]);
+    };
+    img.src = imageUrl;
+  });
 };
 
 export default function ThreeDFlowerEditor() {
@@ -133,6 +183,39 @@ export default function ThreeDFlowerEditor() {
     if (!selectedColor) return '#E5E5E5';
     return getSafeColor(selectedColor);
   }, [selectedColor]);
+
+  // 동적 색상 팔레트 생성
+  const [extractedColors, setExtractedColors] = useState<string[]>([]);
+
+  // 꽃 모델 변경 시 색상 추출
+  useEffect(() => {
+    if (selectedModels['꽃']?.img) {
+      extractColorsFromFlower(selectedModels['꽃'].img).then(colors => {
+        setExtractedColors(colors);
+      });
+    }
+  }, [selectedModels['꽃']?.img]);
+
+  // 1. 팔레트에서 활성화(선택) 색상
+  const paletteActiveColor = useMemo(() => {
+    switch (colorMode) {
+      case 'background':
+        return selectedColor;
+      case 'wrapper':
+        return wrapperColor;
+      case 'decoration':
+        return decorationColor;
+      default:
+        return '';
+    }
+  }, [colorMode, selectedColor, wrapperColor, decorationColor]);
+
+  // 2. 동적 색상 팔레트 (활성화 색상 한 번만, 중복 없이)
+  const dynamicColorPalette = useMemo(() => {
+    const activeColor = paletteActiveColor;
+    const filteredExtracted = extractedColors.filter(c => c !== activeColor);
+    return [activeColor, ...filteredExtracted].filter(Boolean);
+  }, [paletteActiveColor, extractedColors]);
 
   // 색상 변경 핸들러
   const handleColorChange = useCallback(
@@ -255,7 +338,7 @@ export default function ThreeDFlowerEditor() {
 
       const success = await initKakao();
       if (!success) {
-        console.error('카카오 SDK 초기화 실패');
+        // 카카오 SDK 초기화 실패 처리
       }
     };
     initializeKakao();
@@ -411,40 +494,33 @@ export default function ThreeDFlowerEditor() {
           </div>
 
           {/* 아이템 리스트 */}
-          <div className='flex-1 overflow-y-auto grid grid-cols-3 gap-2 auto-rows-min'>
+          <div className='flex-1 overflow-y-auto grid grid-cols-2 gap-2 auto-rows-min'>
             {loading ? (
-              <div className='col-span-3 text-center py-4'>
+              <div className='col-span-2 text-center py-4'>
                 로딩 중...
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className='col-span-3 text-center py-4'>
+              <div className='col-span-2 text-center py-4'>
                 데이터가 없습니다.
               </div>
             ) : (
               filteredItems.map((item) => (
                 <div
                   key={item.id}
-                  className={`flex flex-col items-center justify-around bg-gray-50 rounded-lg p-2 border cursor-pointer transition-all h-24
+                  className={`flex flex-col items-center justify-around bg-gray-50 rounded-lg p-2 border cursor-pointer transition-all
                     ${selectedModels[CATEGORY_MAPPING[tab]]?.id === item.id ? 'border-lime-500 bg-lime-50' : 'border-gray-200 hover:bg-gray-100'}`}
                   onClick={() => handleItemClick(item)}
                 >
-                  <div className='relative w-8 h-8 flex items-center justify-center'>
-                    {typeof item.img === 'string' ? (
-                      <span className='text-2xl'>
-                        {item.img}
-                      </span>
-                    ) : typeof item.img === 'function' ? (
-                      <item.img />
-                    ) : (
-                      <Image
-                        src={item.img}
-                        alt={item.name}
-                        fill
-                        style={{ objectFit: 'contain' }}
-                      />
-                    )}
+                  <div className='relative w-20 h-20 flex items-center justify-center'>
+                    <Image
+                      src={item.img}
+                      alt={item.name}
+                      width={80}
+                      height={80}
+                      className='rounded object-cover'
+                    />
                   </div>
-                  <span className='text-xs text-gray-700 text-center'>
+                  <span className='text-sm font-semibold text-gray-700 text-center'>
                     {item.name}
                   </span>
                 </div>
@@ -502,10 +578,10 @@ export default function ThreeDFlowerEditor() {
                 className='w-8 h-8 rounded-full border-2 border-white cursor-pointer shadow-lg hover:scale-110 transition-transform flex items-center justify-center'
                 style={{
                   backgroundColor:
-                    currentColor &&
-                    currentColor !== 'bg-[#E5E5E5]' &&
-                    currentColor !== '#E5E5E5'
-                      ? getSafeColor(currentColor)
+                    paletteActiveColor &&
+                    paletteActiveColor !== 'bg-[#E5E5E5]' &&
+                    paletteActiveColor !== '#E5E5E5'
+                      ? getSafeColor(paletteActiveColor)
                       : 'transparent',
                 }}
                 title={
@@ -516,26 +592,41 @@ export default function ThreeDFlowerEditor() {
                       : '장식 색상'
                 }
               >
-                {(!currentColor ||
-                  currentColor === 'bg-[#E5E5E5]' ||
-                  currentColor === '#E5E5E5') && (
+                {(!paletteActiveColor ||
+                  paletteActiveColor === 'bg-[#E5E5E5]' ||
+                  paletteActiveColor === '#E5E5E5') && (
                   <RainbowIcon className='w-4 h-4' />
                 )}
               </button>
               {colorOpen && (
                 <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 flex flex-col gap-2'>
-                  {MATERIAL_COLORS.map((c, i) => (
-                    <button
-                      key={i}
-                      className={`w-6 h-6 rounded-full border-2 ${
-                        currentColor && currentColor === c
-                          ? 'border-black'
-                          : 'border-white'
-                      } cursor-pointer hover:scale-110 transition-transform`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => handleColorChange(c)}
-                    />
-                  ))}
+                  {dynamicColorPalette.length > 0 ? (
+                    dynamicColorPalette.map((c, i) => (
+                      <button
+                        key={i}
+                        className={`w-6 h-6 rounded-full border-2 ${
+                          paletteActiveColor && paletteActiveColor === c
+                            ? 'border-black'
+                            : 'border-white'
+                        } cursor-pointer hover:scale-110 transition-transform`}
+                        style={{ backgroundColor: c }}
+                        onClick={() => handleColorChange(c)}
+                      />
+                    ))
+                  ) : (
+                    MATERIAL_COLORS.map((c, i) => (
+                      <button
+                        key={i}
+                        className={`w-6 h-6 rounded-full border-2 ${
+                          paletteActiveColor && paletteActiveColor === c
+                            ? 'border-black'
+                            : 'border-white'
+                        } cursor-pointer hover:scale-110 transition-transform`}
+                        style={{ backgroundColor: c }}
+                        onClick={() => handleColorChange(c)}
+                      />
+                    ))
+                  )}
                 </div>
               )}
             </div>
