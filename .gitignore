@@ -74,3 +74,5 @@ pnpm-lock.yaml
 logs
 *.log
 .cursor/rules/flowerary-rules.mdc
+.cursor/rules/front-rulse.mdc
+.cursor/rules/pullrequest-rull.mdc
