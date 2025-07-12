@@ -47,8 +47,6 @@ export const useModelInteraction = ({
         return;
       }
 
-      console.log('🖱️ 마우스 클릭 이벤트 발생');
-
       // 마우스 위치를 정규화된 좌표로 변환
       const rect =
         renderer.domElement.getBoundingClientRect();
@@ -72,40 +70,41 @@ export const useModelInteraction = ({
 
       if (intersects.length > 0) {
         const clickedObject = intersects[0].object;
-        console.log('🎯 클릭된 객체:', clickedObject);
 
         // 클릭된 객체가 어떤 모델인지 확인
-        if (
-          models.flowers.some(
-            (flower) =>
-              flower.children.includes(clickedObject) ||
-              flower === clickedObject,
-          )
-        ) {
-          console.log('🌸 꽃 모델 클릭됨');
-          onModelClick?.('flower');
-        } else if (
-          models.wrapper &&
-          (models.wrapper.children.includes(
-            clickedObject,
-          ) ||
-            models.wrapper === clickedObject)
-        ) {
-          console.log('🎁 포장지 모델 클릭됨');
-          onModelClick?.('wrapper');
-        } else if (
-          models.decoration &&
-          (models.decoration.children.includes(
-            clickedObject,
-          ) ||
-            models.decoration === clickedObject)
-        ) {
-          console.log('✨ 장식 모델 클릭됨');
-          onModelClick?.('decoration');
+        let foundModelType: ModelType | null = null;
+
+        // 클릭된 객체부터 부모 체인을 따라 올라가면서 모델 찾기
+        let currentObject: THREE.Object3D | null =
+          clickedObject;
+        while (currentObject && !foundModelType) {
+          // 꽃 모델 확인
+          if (models.flowers.includes(currentObject)) {
+            foundModelType = 'flower';
+            break;
+          }
+          // 포장지 모델 확인
+          if (models.wrapper === currentObject) {
+            foundModelType = 'wrapper';
+            break;
+          }
+          // 장식 모델 확인
+          if (models.decoration === currentObject) {
+            foundModelType = 'decoration';
+            break;
+          }
+          // 부모로 이동
+          currentObject = currentObject.parent;
+        }
+
+        if (foundModelType) {
+          onModelClick?.(foundModelType);
+        } else {
+          // 모델이 아닌 경우 배경 클릭으로 처리
+          onModelClick?.('background');
         }
       } else {
         // 아무 모델도 클릭되지 않았으면 배경 클릭으로 간주
-        console.log('🌅 배경 클릭됨');
         onModelClick?.('background');
       }
     },

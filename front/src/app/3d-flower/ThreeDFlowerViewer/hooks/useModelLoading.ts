@@ -3,7 +3,12 @@
  * 모델 캐싱, 로딩 상태 관리, 모델 업데이트를 처리합니다.
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import {
+  useCallback,
+  useRef,
+  useEffect,
+  useState,
+} from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {
@@ -20,11 +25,13 @@ interface UseModelLoadingProps {
   flowerModels: string[];
   wrapperModel?: string;
   decorationModel?: string;
+  onModelsLoaded?: (models: LoadedModels) => void; // 모든 모델 로딩 완료 콜백 추가
 }
 
 interface UseModelLoadingResult {
   models: LoadedModels;
   loading: LoadingState;
+  allModelsLoaded: boolean; // 모든 모델 로딩 완료 상태 추가
 }
 
 /**
@@ -49,12 +56,13 @@ export const useModelLoading = ({
   flowerModels,
   wrapperModel,
   decorationModel,
+  onModelsLoaded,
 }: UseModelLoadingProps): UseModelLoadingResult => {
   // 모델 캐시 참조
   const modelCacheRef = useRef<ModelCache>({});
 
-  // 로드된 모델들 참조
-  const modelsRef = useRef<LoadedModels>({
+  // 로드된 모델들 상태 (useState로 변경)
+  const [models, setModels] = useState<LoadedModels>({
     flowers: [],
     wrapper: null,
     decoration: null,
@@ -66,6 +74,9 @@ export const useModelLoading = ({
     wrapper: false,
     decoration: false,
   });
+
+  // 모든 모델 로딩 완료 상태 참조
+  const allModelsLoadedRef = useRef<boolean>(false);
 
   /**
    * 모델 변환 조정 함수
@@ -113,6 +124,9 @@ export const useModelLoading = ({
    */
   const setupModelMaterials = useCallback(
     (model: THREE.Object3D, type: ModelType): void => {
+      // 모델 초기에는 보이지 않도록 설정
+      model.visible = false;
+
       model.traverse((child: THREE.Object3D) => {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
@@ -215,6 +229,42 @@ export const useModelLoading = ({
   );
 
   /**
+   * 모든 모델 로딩 완료 여부 확인
+   */
+  const checkAllModelsLoaded = useCallback(() => {
+    const hasFlowers =
+      flowerModels.length === 0 ||
+      models.flowers.length > 0;
+    const hasWrapper =
+      !wrapperModel || models.wrapper !== null;
+    const hasDecoration =
+      !decorationModel || models.decoration !== null;
+
+    const allLoaded =
+      hasFlowers && hasWrapper && hasDecoration;
+
+    // 로딩 상태도 확인
+    const notLoading =
+      !loadingRef.current.flowers &&
+      !loadingRef.current.wrapper &&
+      !loadingRef.current.decoration;
+
+    const previouslyLoaded = allModelsLoadedRef.current;
+    allModelsLoadedRef.current = allLoaded && notLoading;
+
+    // 새로 로딩이 완료된 경우에만 콜백 호출
+    if (allModelsLoadedRef.current && !previouslyLoaded) {
+      onModelsLoaded?.(models);
+    }
+  }, [
+    flowerModels.length,
+    wrapperModel,
+    decorationModel,
+    models,
+    onModelsLoaded,
+  ]);
+
+  /**
    * 모델 업데이트 함수
    */
   const updateModels =
@@ -241,33 +291,44 @@ export const useModelLoading = ({
           }
 
           if (!disposed && newFlowerModels.length > 0) {
-            // 기존 꽃 모델들 제거
-            modelsRef.current.flowers.forEach((model) => {
-              if (scene) {
-                scene.remove(model);
-              }
-            });
+            // 상태 업데이트 (이전 상태를 사용하여 기존 모델 제거)
+            setModels((prev) => {
+              // 기존 꽃 모델들 제거
+              prev.flowers.forEach((model) => {
+                if (scene) {
+                  scene.remove(model);
+                }
+              });
 
-            // 새로운 꽃 모델들을 씬에 추가
-            newFlowerModels.forEach((model) => {
-              if (scene) {
-                scene.add(model);
-              }
-            });
+              // 새로운 꽃 모델들을 씬에 추가
+              newFlowerModels.forEach((model) => {
+                if (scene) {
+                  scene.add(model);
+                }
+              });
 
-            modelsRef.current.flowers = newFlowerModels;
+              return {
+                ...prev,
+                flowers: newFlowerModels,
+              };
+            });
           }
 
           loadingRef.current.flowers = false;
         }
       } else {
         // 꽃 모델이 없으면 기존 모델들 제거
-        modelsRef.current.flowers.forEach((model) => {
-          if (scene) {
-            scene.remove(model);
-          }
+        setModels((prev) => {
+          prev.flowers.forEach((model) => {
+            if (scene) {
+              scene.remove(model);
+            }
+          });
+          return {
+            ...prev,
+            flowers: [],
+          };
         });
-        modelsRef.current.flowers = [];
       }
 
       // 포장지 모델 업데이트
@@ -282,24 +343,36 @@ export const useModelLoading = ({
             );
 
           if (!disposed && newWrapperModel) {
-            // 기존 포장지 모델 제거
-            if (modelsRef.current.wrapper && scene) {
-              scene.remove(modelsRef.current.wrapper);
-            }
+            // 상태 업데이트 (이전 상태를 사용하여 기존 모델 제거)
+            setModels((prev) => {
+              // 기존 포장지 모델 제거
+              if (prev.wrapper && scene) {
+                scene.remove(prev.wrapper);
+              }
 
-            // 새로운 포장지 모델을 씬에 추가
-            scene!.add(newWrapperModel);
-            modelsRef.current.wrapper = newWrapperModel;
+              // 새로운 포장지 모델을 씬에 추가
+              scene!.add(newWrapperModel);
+
+              return {
+                ...prev,
+                wrapper: newWrapperModel,
+              };
+            });
           }
 
           loadingRef.current.wrapper = false;
         }
       } else {
         // 포장지 모델이 없으면 기존 모델 제거
-        if (modelsRef.current.wrapper && scene) {
-          scene.remove(modelsRef.current.wrapper);
-          modelsRef.current.wrapper = null;
-        }
+        setModels((prev) => {
+          if (prev.wrapper && scene) {
+            scene.remove(prev.wrapper);
+          }
+          return {
+            ...prev,
+            wrapper: null,
+          };
+        });
       }
 
       // 장식 모델 업데이트
@@ -314,25 +387,36 @@ export const useModelLoading = ({
             );
 
           if (!disposed && newDecorationModel) {
-            // 기존 장식 모델 제거
-            if (modelsRef.current.decoration && scene) {
-              scene.remove(modelsRef.current.decoration);
-            }
+            // 상태 업데이트 (이전 상태를 사용하여 기존 모델 제거)
+            setModels((prev) => {
+              // 기존 장식 모델 제거
+              if (prev.decoration && scene) {
+                scene.remove(prev.decoration);
+              }
 
-            // 새로운 장식 모델을 씬에 추가
-            scene!.add(newDecorationModel);
-            modelsRef.current.decoration =
-              newDecorationModel;
+              // 새로운 장식 모델을 씬에 추가
+              scene!.add(newDecorationModel);
+
+              return {
+                ...prev,
+                decoration: newDecorationModel,
+              };
+            });
           }
 
           loadingRef.current.decoration = false;
         }
       } else {
         // 장식 모델이 없으면 기존 모델 제거
-        if (modelsRef.current.decoration && scene) {
-          scene.remove(modelsRef.current.decoration);
-          modelsRef.current.decoration = null;
-        }
+        setModels((prev) => {
+          if (prev.decoration && scene) {
+            scene.remove(prev.decoration);
+          }
+          return {
+            ...prev,
+            decoration: null,
+          };
+        });
       }
     }, [
       scene,
@@ -348,8 +432,14 @@ export const useModelLoading = ({
     updateModels();
   }, [updateModels]);
 
+  // 모델 상태 변경 시 로딩 완료 확인
+  useEffect(() => {
+    checkAllModelsLoaded();
+  }, [checkAllModelsLoaded]);
+
   return {
-    models: modelsRef.current,
+    models,
     loading: loadingRef.current,
+    allModelsLoaded: allModelsLoadedRef.current,
   };
 };
