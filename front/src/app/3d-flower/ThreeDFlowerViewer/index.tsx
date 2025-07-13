@@ -38,6 +38,7 @@ const ThreeDFlowerViewer: React.FC<
   decorationColor,
   onRendererReady,
   onModelClick,
+  onResetCamera,
 }) => {
   // 클라이언트 사이드 마운트 상태
   const [isMounted, setIsMounted] = useState(false);
@@ -55,8 +56,14 @@ const ThreeDFlowerViewer: React.FC<
   }, []);
 
   // Three.js 초기 설정
-  const { scene, camera, renderer, controls, ready } =
-    useThreeSetup(mountRef, isMounted);
+  const {
+    scene,
+    camera,
+    renderer,
+    controls,
+    ready,
+    resetCameraPosition,
+  } = useThreeSetup(mountRef, isMounted);
 
   // 모델 로딩 관리
   const { models, loading } = useModelLoading({
@@ -95,6 +102,13 @@ const ThreeDFlowerViewer: React.FC<
       onRendererReady?.(renderer, scene, camera);
     }
   }, [onRendererReady, isMounted, renderer, scene, camera]);
+
+  // 카메라 리셋 함수 전달
+  useEffect(() => {
+    if (!isMounted || !resetCameraPosition) return;
+
+    onResetCamera?.(resetCameraPosition);
+  }, [onResetCamera, isMounted, resetCameraPosition]);
 
   // 모델 표시 제어
   useEffect(() => {

@@ -5,6 +5,7 @@ import {
   ReloadIcon,
   DownloadIcon,
   Share1Icon,
+  Crosshair1Icon,
 } from '@radix-ui/react-icons';
 
 // 무지개 아이콘
@@ -18,7 +19,7 @@ export const RainbowIcon = ({
   />
 );
 
-// 실행 취소 아이콘
+// 되돌리기 아이콘
 export const UndoIcon = () => (
   <ChevronLeftIcon className='w-5 h-5' />
 );
@@ -28,9 +29,9 @@ export const RedoIcon = () => (
   <ChevronRightIcon className='w-5 h-5' />
 );
 
-// 리셋 아이콘
+// 리셋 아이콘 (crosshair로 변경)
 export const ResetIcon = () => (
-  <ReloadIcon className='w-5 h-5' />
+  <Crosshair1Icon className='w-5 h-5' />
 );
 
 // 저장 아이콘

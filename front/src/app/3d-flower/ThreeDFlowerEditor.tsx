@@ -74,6 +74,8 @@ export default function ThreeDFlowerEditor() {
   const [colorMode, setColorMode] = useState<
     'background' | 'wrapper' | 'decoration'
   >('background');
+  const [resetCameraFunction, setResetCameraFunction] =
+    useState<(() => void) | null>(null);
 
   // Three.js 객체 상태
   const [threeJSObjects, setThreeJSObjects] = useState<{
@@ -349,6 +351,21 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
+  // 카메라 리셋 핸들러
+  const handleCameraReset = useCallback(
+    (resetFunction: () => void) => {
+      setResetCameraFunction(() => resetFunction);
+    },
+    [],
+  );
+
+  // 초기화 버튼 클릭 핸들러
+  const handleResetClick = useCallback(() => {
+    if (resetCameraFunction) {
+      resetCameraFunction();
+    }
+  }, [resetCameraFunction]);
+
   // 3D 모델 클릭 핸들러
   const handleModelClick = useCallback(
     (
@@ -505,6 +522,7 @@ export default function ThreeDFlowerEditor() {
               decorationColor={decorationColor}
               onRendererReady={handleRendererReady}
               onModelClick={handleModelClick}
+              onResetCamera={handleCameraReset}
             />
           </div>
 
@@ -591,7 +609,10 @@ export default function ThreeDFlowerEditor() {
             >
               <SaveIcon />
             </button>
-            <button className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'>
+            <button
+              className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'
+              onClick={handleResetClick}
+            >
               <ResetIcon />
             </button>
           </div>

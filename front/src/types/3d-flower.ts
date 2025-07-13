@@ -76,6 +76,7 @@ export interface ThreeDFlowerViewerProps {
     camera: THREE.PerspectiveCamera,
   ) => void; // 렌더러 준비 완료 콜백
   onModelClick?: (modelType: ModelType) => void; // 3D 모델 클릭 콜백
+  onResetCamera?: (resetFunction: () => void) => void; // 카메라 리셋 함수 전달 콜백
 }
 
 // 카테고리 매핑 타입

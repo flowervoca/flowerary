@@ -11,10 +11,7 @@ import {
   SelectedModels,
   AllItems,
 } from '@/types/3d-flower';
-import {
-  CATEGORY_MAPPING,
-  DEFAULT_COLORS,
-} from '@/utils/3d-flower-constants';
+import { CATEGORY_MAPPING } from '@/utils/3d-flower-constants';
 import {
   formatModelItems,
   createInitialSelections,
