@@ -106,7 +106,16 @@ export const useSearch = () => {
   };
 
   // 검색 실행 함수
-  const handleSearch = async () => {
+  const handleSearch = async (
+    isAutoSearch = false,
+    searchParams?: {
+      flowNm?: string;
+      tagName?: string;
+      fmonth?: string;
+      fday?: string;
+      activeTab?: SearchTabType;
+    },
+  ) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -117,21 +126,32 @@ export const useSearch = () => {
       // API 요청 데이터 구성
       const requestData: ISearchRequest = {};
 
+      // 전달받은 파라미터가 있으면 우선 사용, 없으면 현재 상태 사용
+      const currentTab =
+        searchParams?.activeTab || activeTab;
+      const currentFlowerName =
+        searchParams?.flowNm || flowerNameInput;
+      const currentFlowerDesc =
+        searchParams?.tagName || flowerDescInput;
+
       // 꽃 이름 또는 꽃 설명 추가
       if (
-        activeTab === 'flowerName' &&
-        flowerNameInput.trim()
+        currentTab === 'flowerName' &&
+        currentFlowerName?.trim()
       ) {
-        requestData.flowNm = flowerNameInput.trim();
+        requestData.flowNm = currentFlowerName.trim();
       } else if (
-        activeTab === 'flowerDesc' &&
-        flowerDescInput.trim()
+        currentTab === 'flowerDesc' &&
+        currentFlowerDesc?.trim()
       ) {
-        requestData.tagName = flowerDescInput.trim();
+        requestData.tagName = currentFlowerDesc.trim();
       }
 
-      // 날짜 정보 추가 (선택된 경우만)
-      if (searchDate) {
+      // 날짜 정보 추가 (전달받은 파라미터 우선, 없으면 현재 상태)
+      if (searchParams?.fmonth && searchParams?.fday) {
+        requestData.fmonth = searchParams.fmonth;
+        requestData.fday = searchParams.fday;
+      } else if (searchDate) {
         const month = String(searchDate.getMonth() + 1);
         const day = String(searchDate.getDate());
         requestData.fmonth = month;
@@ -148,6 +168,8 @@ export const useSearch = () => {
         }
       }
 
+      console.log('📤 최종 API 요청 데이터:', requestData);
+
       // 검색 조건이 하나도 없는 경우 경고
       if (
         !requestData.flowNm &&
@@ -159,7 +181,9 @@ export const useSearch = () => {
         setFlowerList([]);
         setFilteredFlowers([]);
         setIsLoading(false);
-        resetForm();
+        if (!isAutoSearch) {
+          resetForm(); // 수동 검색인 경우만 폼 초기화
+        }
         return;
       }
 
@@ -170,17 +194,21 @@ export const useSearch = () => {
       if (result.success && result.data) {
         setFlowerList(result.data);
         setFilteredFlowers(result.data);
-        resetForm(); // 검색 성공 후 form 초기화
+        if (!isAutoSearch) {
+          resetForm(); // 자동 검색이 아닌 경우만 폼 초기화
+        }
       } else {
         setFlowerList([]);
         setFilteredFlowers([]);
         setError(
           result.error || '알 수 없는 오류가 발생했습니다.',
         );
-        resetForm(); // 검색 실패 후에도 form 초기화
+        if (!isAutoSearch) {
+          resetForm(); // 자동 검색이 아닌 경우만 폼 초기화
+        }
       }
     } catch (err) {
-      console.error('꽃 검색 오류:', err);
+      console.error('🚨 꽃 검색 오류:', err);
       setError(
         '꽃 정보를 불러오는 중 오류가 발생했습니다.',
       );
@@ -194,7 +222,7 @@ export const useSearch = () => {
   // 폼 제출 핸들러
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSearch();
+    handleSearch(false); // 수동 검색 명시
   };
 
   // 페이지 로드시 초기화
