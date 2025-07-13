@@ -5,8 +5,14 @@ import { SearchForm } from './components/search-form';
 import { SearchFilters } from './components/search-filters';
 import { SearchResults } from './components/search-results';
 import { Header } from '@/components/common/header';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { SearchTabType } from '@/types/search';
 
 export default function SearchPage() {
+  const searchParams = useSearchParams();
+  const initialSearchExecuted = useRef(false);
+
   const {
     // 상태
     filteredFlowers,
@@ -28,10 +34,67 @@ export default function SearchPage() {
     handleDateChange,
     clearSearchDate,
     handleSubmit,
+    handleSearch,
   } = useSearch();
 
-  // 검색 키워드는 상수로 정의
-  const keyword = '꽃';
+  // URL 파라미터에서 검색 키워드 추출
+  const getSearchKeyword = () => {
+    const flowNm = searchParams.get('flowNm');
+    const tagName = searchParams.get('tagName');
+
+    if (flowNm) return flowNm;
+    if (tagName) return tagName;
+    return '꽃';
+  };
+
+  // URL 파라미터 기반 초기 검색 실행 (한 번만)
+  useEffect(() => {
+    const flowNm = searchParams.get('flowNm');
+    const tagName = searchParams.get('tagName');
+    const searchType = searchParams.get('searchType');
+    const fmonth = searchParams.get('fmonth');
+    const fday = searchParams.get('fday');
+
+    // URL 파라미터가 있으면 자동 검색 실행
+    if (flowNm || tagName || (fmonth && fday)) {
+      // 탭 설정 (상태 업데이트)
+      if (searchType === 'flowerName') {
+        setActiveTab('flowerName');
+        setFlowerNameInput(flowNm || '');
+      } else if (searchType === 'flowerDesc') {
+        setActiveTab('flowerDesc');
+        setFlowerDescInput(tagName || '');
+      }
+
+      // 날짜 설정
+      if (fmonth && fday) {
+        const currentYear = new Date().getFullYear();
+        const dateToSet = new Date(
+          currentYear,
+          parseInt(fmonth) - 1,
+          parseInt(fday),
+        );
+        handleDateChange(dateToSet);
+      }
+
+      // 검색 실행 - 파라미터 직접 전달로 상태 업데이트 타이밍 문제 해결
+      const searchParams_obj = {
+        flowNm: flowNm || undefined,
+        tagName: tagName || undefined,
+        fmonth: fmonth || undefined,
+        fday: fday || undefined,
+        activeTab: (searchType === 'flowerName'
+          ? 'flowerName'
+          : 'flowerDesc') as SearchTabType,
+      };
+
+      handleSearch(true, searchParams_obj); // 자동 검색 + 파라미터 직접 전달
+      initialSearchExecuted.current = true; // 초기 검색 완료 플래그 설정
+    } 
+  }, [searchParams]); // handleSearch 제거하여 무한 루프 방지
+
+  // 검색 키워드는 URL 파라미터에서 추출
+  const keyword = getSearchKeyword();
 
   if (isLoading && filteredFlowers.length === 0) {
     return (
