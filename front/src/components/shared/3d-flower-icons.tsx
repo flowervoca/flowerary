@@ -15,7 +15,19 @@ export const RainbowIcon = ({
   className?: string;
 }) => (
   <div
-    className={`w-6 h-6 rounded-full bg-gradient-to-r from-red-500 via-yellow-400 to-blue-500 border-2 border-white ${className || ''}`}
+    className={`w-full h-full rounded-full ${className || ''}`}
+    style={{
+      background: `conic-gradient(
+        from 0deg,
+        #ff0000 0deg,
+        #ff8000 60deg,
+        #ffff00 120deg,
+        #80ff00 180deg,
+        #00ff80 240deg,
+        #0080ff 300deg,
+        #8000ff 360deg
+      )`,
+    }}
   />
 );
 
@@ -29,7 +41,7 @@ export const RedoIcon = () => (
   <ChevronRightIcon className='w-5 h-5' />
 );
 
-// 리셋 아이콘 (crosshair로 변경)
+// 리셋 아이콘
 export const ResetIcon = () => (
   <Crosshair1Icon className='w-5 h-5' />
 );

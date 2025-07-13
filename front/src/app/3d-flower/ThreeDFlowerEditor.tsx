@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from 'react';
 import Image from 'next/image';
 import { WebGLRenderer, Scene, Camera } from 'three';
@@ -76,6 +77,32 @@ export default function ThreeDFlowerEditor() {
   >('background');
   const [resetCameraFunction, setResetCameraFunction] =
     useState<(() => void) | null>(null);
+
+  // 커스텀 색상 상태 (각 모드별로 독립적으로 관리)
+  const [customColors, setCustomColors] = useState<{
+    background: string;
+    wrapper: string;
+    decoration: string;
+  }>({
+    background: '#FFB6C1',
+    wrapper: '#FFB6C1',
+    decoration: '#FFB6C1',
+  });
+
+  // 커스텀 색상 사용 여부 추적
+  const [customColorUsed, setCustomColorUsed] = useState<{
+    background: boolean;
+    wrapper: boolean;
+    decoration: boolean;
+  }>({
+    background: false,
+    wrapper: false,
+    decoration: false,
+  });
+
+  // 숨겨진 input color ref
+  const hiddenColorInputRef =
+    useRef<HTMLInputElement>(null);
 
   // Three.js 객체 상태
   const [threeJSObjects, setThreeJSObjects] = useState<{
@@ -159,14 +186,25 @@ export default function ThreeDFlowerEditor() {
   // 2. 동적 색상 팔레트 (활성화 색상 한 번만, 중복 없이)
   const dynamicColorPalette = useMemo(() => {
     // 추출된 색상이 있으면 그대로 사용, 없으면 기본 색상 사용
-    return extractedColors.length > 0
-      ? extractedColors
-      : MATERIAL_COLORS;
+    const baseColors =
+      extractedColors.length > 0
+        ? extractedColors
+        : MATERIAL_COLORS;
+
+    // 무지개 아이콘을 위한 특별한 값 추가
+    return [...baseColors, 'CUSTOM_COLOR'];
   }, [extractedColors]);
 
   // 색상 변경 핸들러
   const handleColorChange = useCallback(
     (color: string) => {
+      // 커스텀 색상 선택인 경우
+      if (color === 'CUSTOM_COLOR') {
+        setColorOpen(false); // 색상 팔레트 닫기
+        return;
+      }
+
+      // 일반 색상 선택인 경우
       switch (colorMode) {
         case 'background':
           handleBackgroundColorChange(color);
@@ -185,9 +223,75 @@ export default function ThreeDFlowerEditor() {
       handleBackgroundColorChange,
       handleWrapperColorChange,
       handleDecorationColorChange,
-      currentColor,
     ],
   );
+
+  // 커스텀 색상 선택 핸들러
+  const handleCustomColorChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newColor = e.target.value;
+
+      // 커스텀 색상 상태 업데이트
+      setCustomColors((prev) => ({
+        ...prev,
+        [colorMode]: newColor,
+      }));
+
+      // 커스텀 색상 사용 여부 업데이트
+      setCustomColorUsed((prev) => ({
+        ...prev,
+        [colorMode]: true,
+      }));
+
+      // 실제 색상 적용
+      switch (colorMode) {
+        case 'background':
+          handleBackgroundColorChange(newColor);
+          break;
+        case 'wrapper':
+          handleWrapperColorChange(newColor);
+          break;
+        case 'decoration':
+          handleDecorationColorChange(newColor);
+          break;
+      }
+    },
+    [
+      colorMode,
+      handleBackgroundColorChange,
+      handleWrapperColorChange,
+      handleDecorationColorChange,
+    ],
+  );
+
+  // 커스텀 색상 버튼 클릭 핸들러 (이미 선택된 커스텀 색상이 있는 경우)
+  const handleCustomColorClick = useCallback(() => {
+    const currentCustomColor = customColors[colorMode];
+    const isCustomColorUsed = customColorUsed[colorMode];
+
+    // 현재 적용된 색상이 있으면 그것을 기본값으로 설정
+    if (
+      !isCustomColorUsed &&
+      currentColor &&
+      currentColor !== 'bg-[#E5E5E5]' &&
+      currentColor !== '#E5E5E5'
+    ) {
+      setCustomColors((prev) => ({
+        ...prev,
+        [colorMode]: getSafeColor(currentColor),
+      }));
+    }
+
+    // 숨겨진 input color 트리거
+    if (hiddenColorInputRef.current) {
+      hiddenColorInputRef.current.click();
+    }
+  }, [
+    colorMode,
+    customColors,
+    customColorUsed,
+    currentColor,
+  ]);
 
   // 토스트 메시지 표시 함수
   const showToastMessage = useCallback(
@@ -315,6 +419,9 @@ export default function ThreeDFlowerEditor() {
       ) {
         handleModelSelect(CATEGORY_MAPPING[tab], item);
       }
+
+      // 색상 관련 UI 닫기
+      setColorOpen(false);
     },
     [tab, handleModelSelect, selectedModels, colorMode],
   );
@@ -554,27 +661,86 @@ export default function ThreeDFlowerEditor() {
                 {(!paletteActiveColor ||
                   paletteActiveColor === 'bg-[#E5E5E5]' ||
                   paletteActiveColor === '#E5E5E5') && (
-                  <RainbowIcon className='w-4 h-4' />
+                  <RainbowIcon className='w-6 h-6' />
                 )}
               </button>
               {colorOpen && (
                 <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 flex flex-col gap-2'>
                   {dynamicColorPalette.length > 0
-                    ? dynamicColorPalette.map((c, i) => (
-                        <button
-                          key={i}
-                          className={`w-6 h-6 rounded-full border-2 ${
-                            paletteActiveColor &&
-                            paletteActiveColor === c
-                              ? 'border-black'
-                              : 'border-white'
-                          } cursor-pointer hover:scale-110 transition-transform`}
-                          style={{ backgroundColor: c }}
-                          onClick={() =>
-                            handleColorChange(c)
-                          }
-                        />
-                      ))
+                    ? dynamicColorPalette.map((c, i) => {
+                        // 커스텀 색상 버튼인 경우
+                        if (c === 'CUSTOM_COLOR') {
+                          const currentCustomColor =
+                            customColors[colorMode];
+                          const isCustomColorActive =
+                            currentColor ===
+                            currentCustomColor;
+                          const isCustomColorUsed =
+                            customColorUsed[colorMode];
+
+                          return (
+                            <div
+                              key={i}
+                              className='relative'
+                            >
+                              <button
+                                className={`w-6 h-6 rounded-full border-2 ${
+                                  isCustomColorActive
+                                    ? 'border-black'
+                                    : 'border-white'
+                                } cursor-pointer hover:scale-110 transition-transform flex items-center justify-center`}
+                                style={{
+                                  backgroundColor:
+                                    isCustomColorActive &&
+                                    isCustomColorUsed
+                                      ? currentCustomColor
+                                      : 'transparent',
+                                }}
+                                onClick={
+                                  handleCustomColorClick
+                                }
+                                title='커스텀 색상 선택'
+                              >
+                                {!(
+                                  isCustomColorActive &&
+                                  isCustomColorUsed
+                                ) && (
+                                  <RainbowIcon className='w-6 h-6' />
+                                )}
+                              </button>
+                              {/* 무지개 아이콘 위치에 숨겨진 input color */}
+                              <input
+                                type='color'
+                                value={
+                                  customColors[colorMode]
+                                }
+                                onChange={
+                                  handleCustomColorChange
+                                }
+                                className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+                                ref={hiddenColorInputRef}
+                              />
+                            </div>
+                          );
+                        }
+
+                        // 일반 색상 버튼인 경우
+                        return (
+                          <button
+                            key={i}
+                            className={`w-6 h-6 rounded-full border-2 ${
+                              paletteActiveColor &&
+                              paletteActiveColor === c
+                                ? 'border-black'
+                                : 'border-white'
+                            } cursor-pointer hover:scale-110 transition-transform`}
+                            style={{ backgroundColor: c }}
+                            onClick={() =>
+                              handleColorChange(c)
+                            }
+                          />
+                        );
+                      })
                     : MATERIAL_COLORS.map((c, i) => (
                         <button
                           key={i}
