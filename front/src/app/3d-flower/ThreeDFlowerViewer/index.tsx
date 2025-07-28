@@ -14,6 +14,7 @@ import { useThreeSetup } from './hooks/useThreeSetup';
 import { useModelLoading } from './hooks/useModelLoading';
 import { useModelInteraction } from './hooks/useModelInteraction';
 import { useDownloadUtils } from './hooks/useDownloadUtils';
+import { useLoadingState } from './hooks/useLoadingState';
 
 // 컴포넌트들
 import ModelManager from './components/ModelManager';
@@ -37,6 +38,7 @@ const ThreeDFlowerViewer: React.FC<
   decorationColor,
   onRendererReady,
   onModelClick,
+  onResetCamera,
 }) => {
   // 클라이언트 사이드 마운트 상태
   const [isMounted, setIsMounted] = useState(false);
@@ -44,14 +46,24 @@ const ThreeDFlowerViewer: React.FC<
   // DOM 참조
   const mountRef = useRef<HTMLDivElement>(null);
 
+  // 로딩 상태 관리
+  const { isLoading, modelsLoadedOnce, onModelsLoaded } =
+    useLoadingState();
+
   // 클라이언트 사이드 마운트 확인
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   // Three.js 초기 설정
-  const { scene, camera, renderer, controls, ready } =
-    useThreeSetup(mountRef, isMounted);
+  const {
+    scene,
+    camera,
+    renderer,
+    controls,
+    ready,
+    resetCameraPosition,
+  } = useThreeSetup(mountRef, isMounted);
 
   // 모델 로딩 관리
   const { models, loading } = useModelLoading({
@@ -60,6 +72,7 @@ const ThreeDFlowerViewer: React.FC<
     flowerModels,
     wrapperModel,
     decorationModel,
+    onModelsLoaded,
   });
 
   // 모델 상호작용 관리
@@ -90,18 +103,56 @@ const ThreeDFlowerViewer: React.FC<
     }
   }, [onRendererReady, isMounted, renderer, scene, camera]);
 
+  // 카메라 리셋 함수 전달
+  useEffect(() => {
+    if (!isMounted || !resetCameraPosition) return;
+
+    onResetCamera?.(resetCameraPosition);
+  }, [onResetCamera, isMounted, resetCameraPosition]);
+
+  // 모델 표시 제어
+  useEffect(() => {
+    if (!scene) return;
+
+    // 모든 모델들의 visibility 제어
+    const allModels = [
+      ...models.flowers,
+      ...(models.wrapper ? [models.wrapper] : []),
+      ...(models.decoration ? [models.decoration] : []),
+    ];
+
+    allModels.forEach((model) => {
+      if (model) {
+        model.visible = modelsLoadedOnce;
+      }
+    });
+  }, [scene, models, modelsLoadedOnce]);
+
   // 마운트되지 않은 경우 렌더링하지 않음
   if (!isMounted) {
     return null;
   }
 
   return (
-    <div ref={mountRef} className='w-full h-full'>
+    <div ref={mountRef} className='w-full h-full relative'>
+      {/* 로딩 인디케이터 */}
+      {isLoading && (
+        <div className='absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10'>
+          <div className='text-center'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4'></div>
+            <p className='text-gray-600 font-medium'>
+              모델 로딩 중...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 모델 색상 관리 */}
       <ModelManager
         models={models}
         wrapperColor={wrapperColor}
         decorationColor={decorationColor}
+        modelsLoadedOnce={modelsLoadedOnce}
       />
 
       {/* 씬 배경색 관리 */}

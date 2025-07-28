@@ -3,14 +3,15 @@
  * 포장지와 장식 모델의 색상을 업데이트합니다.
  */
 
-import React, { useEffect, useMemo } from 'react';
-import * as THREE from 'three';
+import React, { useEffect } from 'react';
 import { LoadedModels } from '@/types/3d-flower';
+import { useColorApplication } from '../hooks/useColorApplication';
 
 interface ModelManagerProps {
   models: LoadedModels;
   wrapperColor?: string;
   decorationColor?: string;
+  modelsLoadedOnce?: boolean; // 모델 로딩 완료 여부
 }
 
 /**
@@ -21,46 +22,45 @@ const ModelManager: React.FC<ModelManagerProps> = ({
   models,
   wrapperColor,
   decorationColor,
+  modelsLoadedOnce = false,
 }) => {
-  /**
-   * 모델 색상 업데이트 함수
-   * @param model - 색상을 변경할 모델
-   * @param color - 적용할 색상 (HEX 코드)
-   */
-  const updateModelColor = useMemo(
-    () => (model: THREE.Object3D, color: string) => {
-      model.traverse((child: THREE.Object3D) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const mesh = child as THREE.Mesh;
-          const material =
-            mesh.material as THREE.MeshStandardMaterial;
-          if (material) {
-            material.color.setHex(
-              parseInt(color.replace('#', ''), 16),
-            );
-          }
-        }
-      });
-    },
-    [],
-  );
+  // 색상 적용 훅 사용
+  const { applyWrapperColor, applyDecorationColor } =
+    useColorApplication({
+      models,
+      modelsLoadedOnce,
+    });
 
-  // 포장지 색상 업데이트
+  // 포장지 색상 적용
   useEffect(() => {
-    if (models.wrapper && wrapperColor) {
-      updateModelColor(models.wrapper, wrapperColor);
-    }
-  }, [models.wrapper, wrapperColor, updateModelColor]);
-
-  // 장식 색상 업데이트
-  useEffect(() => {
-    if (models.decoration && decorationColor) {
-      updateModelColor(models.decoration, decorationColor);
+    if (
+      wrapperColor &&
+      models.wrapper &&
+      modelsLoadedOnce
+    ) {
+      applyWrapperColor(wrapperColor);
     }
   }, [
-    models.decoration,
+    wrapperColor,
+    models.wrapper,
+    modelsLoadedOnce,
+    applyWrapperColor,
+  ]);
+
+  // 장식 색상 적용
+  useEffect(() => {
+    if (
+      decorationColor &&
+      models.decoration &&
+      modelsLoadedOnce
+    ) {
+      applyDecorationColor(decorationColor);
+    }
+  }, [
     decorationColor,
-    updateModelColor,
+    models.decoration,
+    modelsLoadedOnce,
+    applyDecorationColor,
   ]);
 
   // 이 컴포넌트는 UI를 렌더링하지 않고 색상 관리만 담당

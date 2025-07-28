@@ -3,7 +3,12 @@
  * Scene, Camera, Renderer, Controls, Lighting을 설정합니다.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
@@ -18,6 +23,7 @@ interface ThreeSetupResult {
   renderer: THREE.WebGLRenderer | null;
   controls: OrbitControls | null;
   ready: boolean;
+  resetCameraPosition: () => void;
 }
 
 /**
@@ -39,6 +45,40 @@ export const useThreeSetup = (
     null,
   );
   const controlsRef = useRef<OrbitControls | null>(null);
+
+  /**
+   * 카메라와 컨트롤을 초기 위치로 리셋하는 함수
+   */
+  const resetCameraPosition = useCallback(() => {
+    if (!cameraRef.current || !controlsRef.current) return;
+
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+
+    // 카메라 위치 초기화
+    camera.position.set(
+      CAMERA_CONFIG.position.x,
+      CAMERA_CONFIG.position.y,
+      CAMERA_CONFIG.position.z,
+    );
+
+    // 카메라 타겟 초기화
+    camera.lookAt(
+      CAMERA_CONFIG.lookAt.x,
+      CAMERA_CONFIG.lookAt.y,
+      CAMERA_CONFIG.lookAt.z,
+    );
+
+    // 컨트롤 타겟 초기화
+    controls.target.set(
+      CAMERA_CONFIG.lookAt.x,
+      CAMERA_CONFIG.lookAt.y,
+      CAMERA_CONFIG.lookAt.z,
+    );
+
+    // 컨트롤 업데이트
+    controls.update();
+  }, []);
 
   useEffect(() => {
     if (!isMounted || !mountRef.current) return;
@@ -164,5 +204,6 @@ export const useThreeSetup = (
     renderer: rendererRef.current,
     controls: controlsRef.current,
     ready,
+    resetCameraPosition,
   };
 };

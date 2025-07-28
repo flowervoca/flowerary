@@ -28,13 +28,6 @@ export const MATERIAL_COLORS = [
   '#FFFFFF', // 흰색
 ] as const;
 
-// 기본 색상 설정
-export const DEFAULT_COLORS = {
-  background: '#FFB6C1',
-  wrapper: '#FFB6C1',
-  decoration: '#DDA0DD',
-} as const;
-
 // 색상 매핑 객체 - HEX 색상 코드를 그대로 사용
 export const COLOR_MAP = {
   '#FF6B6B': '#FF6B6B', // 빨강

@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from 'react';
 import Image from 'next/image';
 import { WebGLRenderer, Scene, Camera } from 'three';
@@ -29,7 +30,10 @@ import {
   shareToKakao,
 } from './utils/shareUtils';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import ColorThief from 'colorthief';
+
+// ============================================================================
+// 유틸리티 함수들
+// ============================================================================
 
 /**
  * 색상 값을 안전하게 변환하는 유틸리티 함수
@@ -47,57 +51,41 @@ const getSafeColor = (color: string): string => {
   return mappedColor || '#FFB6C1';
 };
 
-/**
- * RGB 값을 HEX로 변환하는 함수
- * @param r - 빨강 값 (0-255)
- * @param g - 초록 값 (0-255)
- * @param b - 파랑 값 (0-255)
- * @returns HEX 색상 코드
- */
-const rgbToHex = (r: number, g: number, b: number): string => {
-  return (
-    '#' +
-    [r, g, b]
-      .map((x) => {
-        const hex = x.toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-      })
-      .join('')
-  );
+// ============================================================================
+// 초기 상태 상수
+// ============================================================================
+
+const INITIAL_CUSTOM_COLORS = {
+  background: '#FFB6C1',
+  wrapper: '#FFB6C1',
+  decoration: '#FFB6C1',
 };
 
-/**
- * 꽃 이미지에서 색상들을 추출하는 함수 (Color Thief 사용, HEX 반환)
- * @param imageUrl - 꽃 이미지 URL
- * @returns 추출된 색상 배열 (HEX)
- */
-const extractColorsFromFlower = async (imageUrl: string): Promise<string[]> => {
-  if (typeof window === 'undefined') return [];
-
-  return new Promise((resolve) => {
-    const img = new window.Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = async () => {
-      try {
-        const colorThief = new ColorThief();
-        // 대표색 6개 추출
-        const palette = colorThief.getPalette(img, 6);
-        // [ [r,g,b], ... ] → [ '#rrggbb', ... ]
-        const colors = palette.map(([r, g, b]: number[]) => rgbToHex(r, g, b));
-        resolve(colors);
-      } catch {
-        resolve([]);
-      }
-    };
-    img.onerror = () => {
-      resolve([]);
-    };
-    img.src = imageUrl;
-  });
+const INITIAL_CUSTOM_COLOR_USED = {
+  background: false,
+  wrapper: false,
+  decoration: false,
 };
+
+const INITIAL_THREE_JS_OBJECTS: {
+  renderer: WebGLRenderer | null;
+  scene: Scene | null;
+  camera: Camera | null;
+} = {
+  renderer: null,
+  scene: null,
+  camera: null,
+};
+
+// ============================================================================
+// 메인 컴포넌트
+// ============================================================================
 
 export default function ThreeDFlowerEditor() {
+  // ============================================================================
   // 커스텀 훅 사용
+  // ============================================================================
+
   const {
     isMounted,
     allItems,
@@ -106,13 +94,20 @@ export default function ThreeDFlowerEditor() {
     selectedColor,
     wrapperColor,
     decorationColor,
+    extractedColors,
+    history,
     handleModelSelect,
     handleBackgroundColorChange,
     handleWrapperColorChange,
     handleDecorationColorChange,
+    undo,
+    redo,
   } = use3DFlower();
 
+  // ============================================================================
   // 로컬 상태
+  // ============================================================================
+
   const [colorOpen, setColorOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [tab, setTab] =
@@ -123,19 +118,32 @@ export default function ThreeDFlowerEditor() {
   const [colorMode, setColorMode] = useState<
     'background' | 'wrapper' | 'decoration'
   >('background');
+  const [resetCameraFunction, setResetCameraFunction] =
+    useState<(() => void) | null>(null);
+
+  // 커스텀 색상 상태 (각 모드별로 독립적으로 관리)
+  const [customColors, setCustomColors] = useState(
+    INITIAL_CUSTOM_COLORS,
+  );
+
+  // 커스텀 색상 사용 여부 추적
+  const [customColorUsed, setCustomColorUsed] = useState(
+    INITIAL_CUSTOM_COLOR_USED,
+  );
+
+  // 숨겨진 input color ref
+  const hiddenColorInputRef =
+    useRef<HTMLInputElement>(null);
 
   // Three.js 객체 상태
-  const [threeJSObjects, setThreeJSObjects] = useState<{
-    renderer: WebGLRenderer | null;
-    scene: Scene | null;
-    camera: Camera | null;
-  }>({
-    renderer: null,
-    scene: null,
-    camera: null,
-  });
+  const [threeJSObjects, setThreeJSObjects] = useState(
+    INITIAL_THREE_JS_OBJECTS,
+  );
 
+  // ============================================================================
   // 메모이제이션된 값들
+  // ============================================================================
+
   const currentTabItems = useMemo(
     () => allItems[CATEGORY_MAPPING[tab]] || [],
     [allItems, tab],
@@ -153,8 +161,8 @@ export default function ThreeDFlowerEditor() {
 
   const hasSelectedModels = useMemo(
     () =>
-      Object.values(selectedModels).every(
-        (model) => !model,
+      Object.values(selectedModels).some(
+        (model) => model !== null,
       ),
     [selectedModels],
   );
@@ -184,18 +192,6 @@ export default function ThreeDFlowerEditor() {
     return getSafeColor(selectedColor);
   }, [selectedColor]);
 
-  // 동적 색상 팔레트 생성
-  const [extractedColors, setExtractedColors] = useState<string[]>([]);
-
-  // 꽃 모델 변경 시 색상 추출
-  useEffect(() => {
-    if (selectedModels['꽃']?.img) {
-      extractColorsFromFlower(selectedModels['꽃'].img).then(colors => {
-        setExtractedColors(colors);
-      });
-    }
-  }, [selectedModels['꽃']?.img]);
-
   // 1. 팔레트에서 활성화(선택) 색상
   const paletteActiveColor = useMemo(() => {
     switch (colorMode) {
@@ -208,18 +204,41 @@ export default function ThreeDFlowerEditor() {
       default:
         return '';
     }
-  }, [colorMode, selectedColor, wrapperColor, decorationColor]);
+  }, [
+    colorMode,
+    selectedColor,
+    wrapperColor,
+    decorationColor,
+  ]);
 
   // 2. 동적 색상 팔레트 (활성화 색상 한 번만, 중복 없이)
   const dynamicColorPalette = useMemo(() => {
-    const activeColor = paletteActiveColor;
-    const filteredExtracted = extractedColors.filter(c => c !== activeColor);
-    return [activeColor, ...filteredExtracted].filter(Boolean);
-  }, [paletteActiveColor, extractedColors]);
+    // 추출된 색상이 있으면 그대로 사용, 없으면 기본 색상 사용
+    const baseColors =
+      extractedColors.length > 0
+        ? extractedColors
+        : MATERIAL_COLORS;
 
-  // 색상 변경 핸들러
+    // 무지개 아이콘을 위한 특별한 값 추가
+    return [...baseColors, 'CUSTOM_COLOR'];
+  }, [extractedColors]);
+
+  // ============================================================================
+  // 이벤트 핸들러들
+  // ============================================================================
+
+  /**
+   * 색상 변경 핸들러
+   */
   const handleColorChange = useCallback(
     (color: string) => {
+      // 커스텀 색상 선택인 경우
+      if (color === 'CUSTOM_COLOR') {
+        setColorOpen(false); // 색상 팔레트 닫기
+        return;
+      }
+
+      // 일반 색상 선택인 경우
       switch (colorMode) {
         case 'background':
           handleBackgroundColorChange(color);
@@ -238,11 +257,83 @@ export default function ThreeDFlowerEditor() {
       handleBackgroundColorChange,
       handleWrapperColorChange,
       handleDecorationColorChange,
-      currentColor,
     ],
   );
 
-  // 토스트 메시지 표시 함수
+  /**
+   * 커스텀 색상 선택 핸들러
+   */
+  const handleCustomColorChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newColor = e.target.value;
+
+      // 커스텀 색상 상태 업데이트
+      setCustomColors((prev) => ({
+        ...prev,
+        [colorMode]: newColor,
+      }));
+
+      // 커스텀 색상 사용 여부 업데이트
+      setCustomColorUsed((prev) => ({
+        ...prev,
+        [colorMode]: true,
+      }));
+
+      // 실제 색상 적용 (히스토리 저장은 각 핸들러에서 처리됨)
+      switch (colorMode) {
+        case 'background':
+          handleBackgroundColorChange(newColor);
+          break;
+        case 'wrapper':
+          handleWrapperColorChange(newColor);
+          break;
+        case 'decoration':
+          handleDecorationColorChange(newColor);
+          break;
+      }
+    },
+    [
+      colorMode,
+      handleBackgroundColorChange,
+      handleWrapperColorChange,
+      handleDecorationColorChange,
+    ],
+  );
+
+  /**
+   * 커스텀 색상 버튼 클릭 핸들러 (이미 선택된 커스텀 색상이 있는 경우)
+   */
+  const handleCustomColorClick = useCallback(() => {
+    const currentCustomColor = customColors[colorMode];
+    const isCustomColorUsed = customColorUsed[colorMode];
+
+    // 현재 적용된 색상이 있으면 그것을 기본값으로 설정
+    if (
+      !isCustomColorUsed &&
+      currentColor &&
+      currentColor !== 'bg-[#E5E5E5]' &&
+      currentColor !== '#E5E5E5'
+    ) {
+      setCustomColors((prev) => ({
+        ...prev,
+        [colorMode]: getSafeColor(currentColor),
+      }));
+    }
+
+    // 숨겨진 input color 트리거
+    if (hiddenColorInputRef.current) {
+      hiddenColorInputRef.current.click();
+    }
+  }, [
+    colorMode,
+    customColors,
+    customColorUsed,
+    currentColor,
+  ]);
+
+  /**
+   * 토스트 메시지 표시 함수
+   */
   const showToastMessage = useCallback(
     (message: string) => {
       setToastMessage(message);
@@ -252,7 +343,9 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
-  // 다운로드 핸들러
+  /**
+   * 다운로드 핸들러
+   */
   const handleDownload = useCallback(
     (filename: string) => {
       showToastMessage(`${filename}이(가) 저장되었습니다!`);
@@ -260,7 +353,9 @@ export default function ThreeDFlowerEditor() {
     [showToastMessage],
   );
 
-  // 다운로드 시작 핸들러
+  /**
+   * 다운로드 시작 핸들러
+   */
   const handleDownloadStart = useCallback(() => {
     setColorOpen(false);
 
@@ -272,7 +367,9 @@ export default function ThreeDFlowerEditor() {
     }, 100);
   }, [title]);
 
-  // 클립보드 복사 핸들러
+  /**
+   * 클립보드 복사 핸들러
+   */
   const handleCopy = useCallback(
     (success: boolean) => {
       if (success) {
@@ -284,7 +381,9 @@ export default function ThreeDFlowerEditor() {
     [showToastMessage],
   );
 
-  // 카카오톡 공유 핸들러
+  /**
+   * 카카오톡 공유 핸들러
+   */
   const handleShare = useCallback(async () => {
     if (!selectedModels[CATEGORY_MAPPING[tab]]) {
       showToastMessage(
@@ -319,32 +418,9 @@ export default function ThreeDFlowerEditor() {
     showToastMessage,
   ]);
 
-  // 카카오 SDK 초기화
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const initializeKakao = async () => {
-      await new Promise<void>((resolve) => {
-        if (window.Kakao) {
-          resolve();
-        } else {
-          window.addEventListener(
-            'kakao-sdk-loaded',
-            () => resolve(),
-            { once: true },
-          );
-        }
-      });
-
-      const success = await initKakao();
-      if (!success) {
-        // 카카오 SDK 초기화 실패 처리
-      }
-    };
-    initializeKakao();
-  }, [isMounted]);
-
-  // 이벤트 핸들러들
+  /**
+   * 아이템 클릭 핸들러
+   */
   const handleItemClick = useCallback(
     (item: any) => {
       // 모델 선택 시 색상 모드 변경 (꽃 제외)
@@ -368,10 +444,16 @@ export default function ThreeDFlowerEditor() {
       ) {
         handleModelSelect(CATEGORY_MAPPING[tab], item);
       }
+
+      // 색상 관련 UI 닫기
+      setColorOpen(false);
     },
     [tab, handleModelSelect, selectedModels, colorMode],
   );
 
+  /**
+   * 탭 변경 핸들러
+   */
   const handleTabChange = useCallback(
     (newTab: keyof typeof CATEGORY_MAPPING) => {
       setTab(newTab);
@@ -379,6 +461,9 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
+  /**
+   * 검색 변경 핸들러
+   */
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
@@ -386,6 +471,9 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
+  /**
+   * 제목 변경 핸들러
+   */
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setTitle(e.target.value);
@@ -393,6 +481,9 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
+  /**
+   * 렌더러 준비 핸들러
+   */
   const handleRendererReady = useCallback(
     (
       renderer: WebGLRenderer,
@@ -404,7 +495,28 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
-  // 3D 모델 클릭 핸들러
+  /**
+   * 카메라 리셋 핸들러
+   */
+  const handleCameraReset = useCallback(
+    (resetFunction: () => void) => {
+      setResetCameraFunction(() => resetFunction);
+    },
+    [],
+  );
+
+  /**
+   * 초기화 버튼 클릭 핸들러
+   */
+  const handleResetClick = useCallback(() => {
+    if (resetCameraFunction) {
+      resetCameraFunction();
+    }
+  }, [resetCameraFunction]);
+
+  /**
+   * 3D 모델 클릭 핸들러
+   */
   const handleModelClick = useCallback(
     (
       modelType:
@@ -430,10 +542,84 @@ export default function ThreeDFlowerEditor() {
     [],
   );
 
+  // ============================================================================
+  // 사이드 이펙트
+  // ============================================================================
+
+  /**
+   * 카카오 SDK 초기화
+   */
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const initializeKakao = async () => {
+      await new Promise<void>((resolve) => {
+        if (window.Kakao) {
+          resolve();
+        } else {
+          window.addEventListener(
+            'kakao-sdk-loaded',
+            () => resolve(),
+            { once: true },
+          );
+        }
+      });
+
+      const success = await initKakao();
+      if (!success) {
+        // 카카오 SDK 초기화 실패 처리
+      }
+    };
+    initializeKakao();
+  }, [isMounted]);
+
+  /**
+   * 키보드 단축키 처리
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z (또는 Cmd+Z) - Undo
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === 'z' &&
+        !e.shiftKey
+      ) {
+        e.preventDefault();
+        if (history.past.length > 0) {
+          undo();
+        }
+      }
+      // Ctrl+Y (또는 Cmd+Y) - Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        if (history.future.length > 0) {
+          redo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () =>
+      window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    history.past.length,
+    history.future.length,
+    undo,
+    redo,
+  ]);
+
+  // ============================================================================
+  // 렌더링 조건
+  // ============================================================================
+
   // 마운트되지 않은 경우 렌더링하지 않음
   if (!isMounted) {
     return null;
   }
+
+  // ============================================================================
+  // 렌더링
+  // ============================================================================
 
   return (
     <div className='w-full h-[calc(100vh-120px)] flex items-center justify-center bg-[#F5F5F5] py-8'>
@@ -496,8 +682,11 @@ export default function ThreeDFlowerEditor() {
           {/* 아이템 리스트 */}
           <div className='flex-1 overflow-y-auto grid grid-cols-2 gap-2 auto-rows-min'>
             {loading ? (
-              <div className='col-span-2 text-center py-4'>
-                로딩 중...
+              <div className='flex items-center justify-center h-full'>
+                <div className='text-center'>
+                  <div className='w-16 h-16 border-4 border-gray-300 border-t-pink-500 rounded-full animate-spin mx-auto mb-4'></div>
+                  <p>모델 로딩 중...</p>
+                </div>
               </div>
             ) : filteredItems.length === 0 ? (
               <div className='col-span-2 text-center py-4'>
@@ -557,14 +746,8 @@ export default function ThreeDFlowerEditor() {
               decorationColor={decorationColor}
               onRendererReady={handleRendererReady}
               onModelClick={handleModelClick}
+              onResetCamera={handleCameraReset}
             />
-            {hasSelectedModels && (
-              <div className='absolute inset-0 flex items-center justify-center'>
-                <div className='text-gray-400 text-center'>
-                  <p>왼쪽에서 모델을 선택해주세요</p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* 색상 선택 패널 - 왼쪽 상단으로 이동 */}
@@ -595,38 +778,101 @@ export default function ThreeDFlowerEditor() {
                 {(!paletteActiveColor ||
                   paletteActiveColor === 'bg-[#E5E5E5]' ||
                   paletteActiveColor === '#E5E5E5') && (
-                  <RainbowIcon className='w-4 h-4' />
+                  <RainbowIcon className='w-6 h-6' />
                 )}
               </button>
               {colorOpen && (
                 <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 flex flex-col gap-2'>
-                  {dynamicColorPalette.length > 0 ? (
-                    dynamicColorPalette.map((c, i) => (
-                      <button
-                        key={i}
-                        className={`w-6 h-6 rounded-full border-2 ${
-                          paletteActiveColor && paletteActiveColor === c
-                            ? 'border-black'
-                            : 'border-white'
-                        } cursor-pointer hover:scale-110 transition-transform`}
-                        style={{ backgroundColor: c }}
-                        onClick={() => handleColorChange(c)}
-                      />
-                    ))
-                  ) : (
-                    MATERIAL_COLORS.map((c, i) => (
-                      <button
-                        key={i}
-                        className={`w-6 h-6 rounded-full border-2 ${
-                          paletteActiveColor && paletteActiveColor === c
-                            ? 'border-black'
-                            : 'border-white'
-                        } cursor-pointer hover:scale-110 transition-transform`}
-                        style={{ backgroundColor: c }}
-                        onClick={() => handleColorChange(c)}
-                      />
-                    ))
-                  )}
+                  {dynamicColorPalette.length > 0
+                    ? dynamicColorPalette.map((c, i) => {
+                        // 커스텀 색상 버튼인 경우
+                        if (c === 'CUSTOM_COLOR') {
+                          const currentCustomColor =
+                            customColors[colorMode];
+                          const isCustomColorActive =
+                            currentColor ===
+                            currentCustomColor;
+                          const isCustomColorUsed =
+                            customColorUsed[colorMode];
+
+                          return (
+                            <div
+                              key={i}
+                              className='relative'
+                            >
+                              <button
+                                className={`w-6 h-6 rounded-full border-2 ${
+                                  isCustomColorActive
+                                    ? 'border-black'
+                                    : 'border-white'
+                                } cursor-pointer hover:scale-110 transition-transform flex items-center justify-center`}
+                                style={{
+                                  backgroundColor:
+                                    isCustomColorActive &&
+                                    isCustomColorUsed
+                                      ? currentCustomColor
+                                      : 'transparent',
+                                }}
+                                onClick={
+                                  handleCustomColorClick
+                                }
+                                title='커스텀 색상 선택'
+                              >
+                                {!(
+                                  isCustomColorActive &&
+                                  isCustomColorUsed
+                                ) && (
+                                  <RainbowIcon className='w-6 h-6' />
+                                )}
+                              </button>
+                              {/* 무지개 아이콘 위치에 숨겨진 input color */}
+                              <input
+                                type='color'
+                                value={
+                                  customColors[colorMode]
+                                }
+                                onChange={
+                                  handleCustomColorChange
+                                }
+                                className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+                                ref={hiddenColorInputRef}
+                              />
+                            </div>
+                          );
+                        }
+
+                        // 일반 색상 버튼인 경우
+                        return (
+                          <button
+                            key={i}
+                            className={`w-6 h-6 rounded-full border-2 ${
+                              paletteActiveColor &&
+                              paletteActiveColor === c
+                                ? 'border-black'
+                                : 'border-white'
+                            } cursor-pointer hover:scale-110 transition-transform`}
+                            style={{ backgroundColor: c }}
+                            onClick={() =>
+                              handleColorChange(c)
+                            }
+                          />
+                        );
+                      })
+                    : MATERIAL_COLORS.map((c, i) => (
+                        <button
+                          key={i}
+                          className={`w-6 h-6 rounded-full border-2 ${
+                            paletteActiveColor &&
+                            paletteActiveColor === c
+                              ? 'border-black'
+                              : 'border-white'
+                          } cursor-pointer hover:scale-110 transition-transform`}
+                          style={{ backgroundColor: c }}
+                          onClick={() =>
+                            handleColorChange(c)
+                          }
+                        />
+                      ))}
                 </div>
               )}
             </div>
@@ -646,17 +892,46 @@ export default function ThreeDFlowerEditor() {
             >
               <SaveIcon />
             </button>
-            <button className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'>
+            <button
+              className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'
+              onClick={handleResetClick}
+            >
               <ResetIcon />
             </button>
           </div>
 
           {/* Undo/Redo 버튼 */}
           <div className='absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4'>
-            <button className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'>
+            <button
+              className={`w-10 h-10 rounded-full text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 ease-in-out flex items-center justify-center ${
+                history.past.length > 0
+                  ? 'bg-[#3E7959] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b]'
+                  : 'bg-gray-400 cursor-not-allowed'
+              }`}
+              onClick={undo}
+              disabled={history.past.length === 0}
+              title={
+                history.past.length > 0
+                  ? '뒤로가기 (Ctrl+Z)'
+                  : '뒤로가기 불가'
+              }
+            >
               <UndoIcon />
             </button>
-            <button className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'>
+            <button
+              className={`w-10 h-10 rounded-full text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 ease-in-out flex items-center justify-center ${
+                history.future.length > 0
+                  ? 'bg-[#3E7959] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b]'
+                  : 'bg-gray-400 cursor-not-allowed'
+              }`}
+              onClick={redo}
+              disabled={history.future.length === 0}
+              title={
+                history.future.length > 0
+                  ? '앞으로가기 (Ctrl+Y)'
+                  : '앞으로가기 불가'
+              }
+            >
               <RedoIcon />
             </button>
           </div>
