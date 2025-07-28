@@ -5,7 +5,8 @@ module.exports = {
       'encrypted-tbn0.gstatic.com',
       'img.freepik.com',
       'blog.kakaocdn.net',
-      'www.nihhs.go.kr'
+      'www.nihhs.go.kr',
+      'oolkuscvkgdziqfysead.storage.supabase.co'
     ],
   },
 }; 
