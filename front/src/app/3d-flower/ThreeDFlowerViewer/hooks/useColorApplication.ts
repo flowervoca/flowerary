@@ -16,6 +16,10 @@ import {
   ColorStateManager,
 } from '../utils/colorUtils';
 
+// ============================================================================
+// 타입 정의
+// ============================================================================
+
 interface UseColorApplicationProps {
   models: LoadedModels;
   modelsLoadedOnce: boolean;
@@ -27,11 +31,31 @@ interface ColorApplicationConfig {
   initialDelay: number;
 }
 
+// ============================================================================
+// 상수 정의
+// ============================================================================
+
 const DEFAULT_CONFIG: ColorApplicationConfig = {
   maxRetries: 10,
   retryInterval: 200,
   initialDelay: 50,
 };
+
+const DEFAULT_COLOR = '#FFB6C1';
+
+// ============================================================================
+// 초기 상태 상수
+// ============================================================================
+
+const INITIAL_LOADED_MODELS: LoadedModels = {
+  flowers: [],
+  wrapper: null,
+  decoration: null,
+};
+
+// ============================================================================
+// 메인 훅
+// ============================================================================
 
 /**
  * 색상 적용 커스텀 훅
@@ -40,6 +64,10 @@ export const useColorApplication = ({
   models,
   modelsLoadedOnce,
 }: UseColorApplicationProps) => {
+  // ============================================================================
+  // 참조 및 상태
+  // ============================================================================
+
   // 색상 상태 관리자 (메모이제이션)
   const colorStateManager = useMemo(
     () => new ColorStateManager(),
@@ -53,11 +81,13 @@ export const useColorApplication = ({
   }>({});
 
   // 이전 모델 참조 (모델 변경 감지용)
-  const prevModelsRef = useRef<LoadedModels>({
-    flowers: [],
-    wrapper: null,
-    decoration: null,
-  });
+  const prevModelsRef = useRef<LoadedModels>(
+    INITIAL_LOADED_MODELS,
+  );
+
+  // ============================================================================
+  // 유틸리티 함수들
+  // ============================================================================
 
   /**
    * 타이머 정리 함수
@@ -80,6 +110,39 @@ export const useColorApplication = ({
       clearTimer(key as 'wrapper' | 'decoration');
     });
   }, [clearTimer]);
+
+  /**
+   * 모델에서 현재 색상 추출
+   */
+  const getCurrentModelColor = useCallback(
+    (model: THREE.Object3D): string => {
+      let currentColor = DEFAULT_COLOR;
+
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          if (Array.isArray(child.material)) {
+            const firstMaterial = child.material[0];
+            if (firstMaterial && firstMaterial.color) {
+              currentColor =
+                '#' + firstMaterial.color.getHexString();
+            }
+          } else {
+            if (child.material.color) {
+              currentColor =
+                '#' + child.material.color.getHexString();
+            }
+          }
+        }
+      });
+
+      return currentColor;
+    },
+    [],
+  );
+
+  // ============================================================================
+  // 색상 적용 함수들
+  // ============================================================================
 
   /**
    * 색상 적용 시도 함수
@@ -160,25 +223,38 @@ export const useColorApplication = ({
       // 기존 타이머 정리
       clearTimer(modelType);
 
-      // 초기 지연 후 색상 적용 시도
-      return new Promise((resolve) => {
-        setTimeout(async () => {
-          const success = await attemptColorApplication(
-            model,
-            color,
-            modelType,
-          );
-          resolve(success);
-        }, DEFAULT_CONFIG.initialDelay);
-      });
+      // 현재 색상 가져오기
+      const currentColor = getCurrentModelColor(model);
+
+      // 색상 적용 시도
+      const success = await attemptColorApplication(
+        model,
+        color,
+        modelType,
+      );
+
+      if (success) {
+        colorStateManager.setAppliedState(
+          modelType,
+          color,
+          model.uuid,
+        );
+      }
+
+      return success;
     },
     [
       modelsLoadedOnce,
       clearTimer,
       attemptColorApplication,
       colorStateManager,
+      getCurrentModelColor,
     ],
   );
+
+  // ============================================================================
+  // 특정 모델 타입별 색상 적용 함수들
+  // ============================================================================
 
   /**
    * 포장지 색상 적용
@@ -205,6 +281,10 @@ export const useColorApplication = ({
     },
     [models.decoration, applyColor],
   );
+
+  // ============================================================================
+  // 사이드 이펙트
+  // ============================================================================
 
   /**
    * 모델 변경 감지 및 상태 정리
@@ -243,6 +323,10 @@ export const useColorApplication = ({
       colorStateManager.clearAllStates();
     };
   }, [clearAllTimers, colorStateManager]);
+
+  // ============================================================================
+  // 반환값
+  // ============================================================================
 
   // 반환값 메모이제이션
   return useMemo(

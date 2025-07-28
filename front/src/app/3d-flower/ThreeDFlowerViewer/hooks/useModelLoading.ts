@@ -19,6 +19,10 @@ import {
 } from '@/types/3d-flower';
 import { MODEL_TRANSFORM_CONFIG } from '@/utils/3d-flower-constants';
 
+// ============================================================================
+// 타입 정의
+// ============================================================================
+
 interface UseModelLoadingProps {
   scene: THREE.Scene | null;
   ready: boolean;
@@ -34,6 +38,10 @@ interface UseModelLoadingResult {
   allModelsLoaded: boolean; // 모든 모델 로딩 완료 상태 추가
 }
 
+// ============================================================================
+// 유틸리티 함수들
+// ============================================================================
+
 /**
  * 모델 타입이 변환 가능한지 확인하는 타입 가드
  * @param type - 확인할 모델 타입
@@ -44,6 +52,26 @@ const isValidModelType = (
 ): type is 'flower' | 'wrapper' | 'decoration' => {
   return type !== 'background';
 };
+
+// ============================================================================
+// 초기 상태 상수
+// ============================================================================
+
+const INITIAL_LOADED_MODELS: LoadedModels = {
+  flowers: [],
+  wrapper: null,
+  decoration: null,
+};
+
+const INITIAL_LOADING_STATE: LoadingState = {
+  flowers: false,
+  wrapper: false,
+  decoration: false,
+};
+
+// ============================================================================
+// 메인 훅
+// ============================================================================
 
 /**
  * 모델 로딩 커스텀 훅
@@ -58,25 +86,29 @@ export const useModelLoading = ({
   decorationModel,
   onModelsLoaded,
 }: UseModelLoadingProps): UseModelLoadingResult => {
+  // ============================================================================
+  // 참조 및 상태
+  // ============================================================================
+
   // 모델 캐시 참조
   const modelCacheRef = useRef<ModelCache>({});
 
   // 로드된 모델들 상태 (useState로 변경)
-  const [models, setModels] = useState<LoadedModels>({
-    flowers: [],
-    wrapper: null,
-    decoration: null,
-  });
+  const [models, setModels] = useState<LoadedModels>(
+    INITIAL_LOADED_MODELS,
+  );
 
   // 로딩 상태 참조
-  const loadingRef = useRef<LoadingState>({
-    flowers: false,
-    wrapper: false,
-    decoration: false,
-  });
+  const loadingRef = useRef<LoadingState>(
+    INITIAL_LOADING_STATE,
+  );
 
   // 모든 모델 로딩 완료 상태 참조
   const allModelsLoadedRef = useRef<boolean>(false);
+
+  // ============================================================================
+  // 모델 변환 및 설정 함수들
+  // ============================================================================
 
   /**
    * 모델 변환 조정 함수
@@ -140,6 +172,10 @@ export const useModelLoading = ({
     },
     [],
   );
+
+  // ============================================================================
+  // 모델 로딩 함수들
+  // ============================================================================
 
   /**
    * 단일 모델 로드 함수
@@ -228,6 +264,10 @@ export const useModelLoading = ({
     ],
   );
 
+  // ============================================================================
+  // 모델 상태 관리 함수들
+  // ============================================================================
+
   /**
    * 모든 모델 로딩 완료 여부 확인
    */
@@ -264,16 +304,15 @@ export const useModelLoading = ({
     onModelsLoaded,
   ]);
 
+  // ============================================================================
+  // 꽃 모델 업데이트 함수
+  // ============================================================================
+
   /**
-   * 모델 업데이트 함수
+   * 꽃 모델 업데이트
    */
-  const updateModels =
-    useCallback(async (): Promise<void> => {
-      if (!scene || !ready) return;
-
-      let disposed = false;
-
-      // 꽃 모델 업데이트
+  const updateFlowerModels = useCallback(
+    async (disposed: boolean): Promise<void> => {
       if (flowerModels && flowerModels.length > 0) {
         if (!loadingRef.current.flowers) {
           loadingRef.current.flowers = true;
@@ -291,7 +330,6 @@ export const useModelLoading = ({
           }
 
           if (!disposed && newFlowerModels.length > 0) {
-            // 상태 업데이트 (이전 상태를 사용하여 기존 모델 제거)
             setModels((prev) => {
               // 기존 꽃 모델들 제거
               prev.flowers.forEach((model) => {
@@ -330,8 +368,19 @@ export const useModelLoading = ({
           };
         });
       }
+    },
+    [flowerModels, loadOrGetCachedModel, scene],
+  );
 
-      // 포장지 모델 업데이트
+  // ============================================================================
+  // 포장지 모델 업데이트 함수
+  // ============================================================================
+
+  /**
+   * 포장지 모델 업데이트
+   */
+  const updateWrapperModel = useCallback(
+    async (disposed: boolean): Promise<void> => {
       if (wrapperModel) {
         if (!loadingRef.current.wrapper) {
           loadingRef.current.wrapper = true;
@@ -343,7 +392,6 @@ export const useModelLoading = ({
             );
 
           if (!disposed && newWrapperModel) {
-            // 상태 업데이트 (이전 상태를 사용하여 기존 모델 제거)
             setModels((prev) => {
               // 기존 포장지 모델 제거
               if (prev.wrapper && scene) {
@@ -374,8 +422,19 @@ export const useModelLoading = ({
           };
         });
       }
+    },
+    [wrapperModel, loadOrGetCachedModel, scene],
+  );
 
-      // 장식 모델 업데이트
+  // ============================================================================
+  // 장식 모델 업데이트 함수
+  // ============================================================================
+
+  /**
+   * 장식 모델 업데이트
+   */
+  const updateDecorationModel = useCallback(
+    async (disposed: boolean): Promise<void> => {
       if (decorationModel) {
         if (!loadingRef.current.decoration) {
           loadingRef.current.decoration = true;
@@ -387,7 +446,6 @@ export const useModelLoading = ({
             );
 
           if (!disposed && newDecorationModel) {
-            // 상태 업데이트 (이전 상태를 사용하여 기존 모델 제거)
             setModels((prev) => {
               // 기존 장식 모델 제거
               if (prev.decoration && scene) {
@@ -418,14 +476,40 @@ export const useModelLoading = ({
           };
         });
       }
+    },
+    [decorationModel, loadOrGetCachedModel, scene],
+  );
+
+  // ============================================================================
+  // 메인 모델 업데이트 함수
+  // ============================================================================
+
+  /**
+   * 모델 업데이트 함수
+   */
+  const updateModels =
+    useCallback(async (): Promise<void> => {
+      if (!scene || !ready) return;
+
+      let disposed = false;
+
+      // 모든 모델 타입을 병렬로 업데이트
+      await Promise.all([
+        updateFlowerModels(disposed),
+        updateWrapperModel(disposed),
+        updateDecorationModel(disposed),
+      ]);
     }, [
       scene,
       ready,
-      flowerModels,
-      wrapperModel,
-      decorationModel,
-      loadOrGetCachedModel,
+      updateFlowerModels,
+      updateWrapperModel,
+      updateDecorationModel,
     ]);
+
+  // ============================================================================
+  // 사이드 이펙트
+  // ============================================================================
 
   // 모델 로딩 및 관리
   useEffect(() => {
@@ -436,6 +520,10 @@ export const useModelLoading = ({
   useEffect(() => {
     checkAllModelsLoaded();
   }, [checkAllModelsLoaded]);
+
+  // ============================================================================
+  // 반환값
+  // ============================================================================
 
   return {
     models,
