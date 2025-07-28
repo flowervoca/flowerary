@@ -27,9 +27,8 @@ export interface IArticle {
   content: string;
   createdAt?: string;
   updatedAt?: string;
-  // UI에서 사용할 추가 필드들 (선택적)
+  imgPath?: string;
   tag?: string;
-  image?: string;
   description?: string;
 }
 

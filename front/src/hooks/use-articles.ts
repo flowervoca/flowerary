@@ -59,6 +59,24 @@ export function useArticles(): IUseArticlesReturn {
       setError(null);
 
       const response = await getAllArticles();
+
+      // 디버깅: 받아온 데이터 구조 확인
+      console.log('🔍 useArticles - 전체 응답:', response);
+      console.log(
+        '🔍 useArticles - 총 개수:',
+        response.totalCount,
+      );
+      if (response.data && response.data.length > 0) {
+        console.log(
+          '🔍 useArticles - 첫 번째 article:',
+          response.data[0],
+        );
+        console.log(
+          '🔍 useArticles - imgPath 필드:',
+          response.data[0].imgPath,
+        );
+      }
+
       setArticles(response.data);
       setTotalCount(response.totalCount);
     } catch (err) {

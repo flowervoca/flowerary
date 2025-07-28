@@ -15,18 +15,27 @@ import type { IArticle } from '@/types/article';
 
 // 정적 이미지 import (API 보강 전까지 사용)
 import floristImage1 from '@/assets/images/florist/florist_1.png';
-import floristImage2 from '@/assets/images/florist/florist_2.png';
-import floristImage3 from '@/assets/images/florist/florist_3.png';
-
-const fallbackImages = [
-  floristImage1,
-  floristImage2,
-  floristImage3,
-];
 
 export function FloristSection() {
   const { articles, isLoading, error } = useArticles();
   const [displayCount, setDisplayCount] = useState(3); // 표시할 카드 개수
+
+  // 디버깅: articles 데이터 확인
+  console.log('🔍 FloristSection - articles:', articles);
+  if (articles.length > 0) {
+    console.log(
+      '🔍 FloristSection - 첫 번째 article:',
+      articles[0],
+    );
+    console.log(
+      '🔍 FloristSection - imgPath:',
+      articles[0].imgPath,
+    );
+    console.log(
+      '🔍 FloristSection - 모든 필드:',
+      Object.keys(articles[0]),
+    );
+  }
   const [selectedArticle, setSelectedArticle] =
     useState<IArticle | null>(null); // 선택된 아티클
   const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태
@@ -115,7 +124,7 @@ export function FloristSection() {
 
         {/* 칼럼 카드 리스트 */}
         <div className='w-full flex flex-col md:flex-row gap-6 flex-wrap'>
-          {displayedArticles.map((article, index) => (
+          {displayedArticles.map((article) => (
             <Card
               key={article.id}
               className='w-[430px] rounded-2xl shadow-none border-0 bg-[#F1F1F3] p-0 flex flex-col mx-auto overflow-hidden cursor-pointer hover:shadow-lg transition-shadow'
@@ -138,23 +147,19 @@ export function FloristSection() {
 
               {/* 이미지 영역 */}
               <div className='relative w-full h-[230px] rounded-b-2xl overflow-hidden'>
-                {/* TODO: API 보강 시 article.image 사용 */}
-                {article.image ? (
+                {/* API imgPath 사용 */}
+                {article.imgPath ? (
                   <Image
-                    src={article.image}
+                    src={article.imgPath}
                     alt={article.title}
                     fill
                     className='object-cover rounded-b-2xl'
                     sizes='(max-width: 768px) 100vw, 430px'
                   />
                 ) : (
-                  /* 임시 fallback 이미지 */
+                  /* 대체 이미지 */
                   <Image
-                    src={
-                      fallbackImages[
-                        index % fallbackImages.length
-                      ]
-                    }
+                    src={floristImage1}
                     alt={article.title}
                     fill
                     className='object-cover rounded-b-2xl'
@@ -203,19 +208,19 @@ export function FloristSection() {
 
               {/* 이미지 영역 */}
               <div className='relative w-full h-[400px] rounded-lg overflow-hidden'>
-                {/* TODO: API 보강 시 selectedArticle.image 사용 */}
-                {selectedArticle.image ? (
+                {/* API imgPath 사용 */}
+                {selectedArticle.imgPath ? (
                   <Image
-                    src={selectedArticle.image}
+                    src={selectedArticle.imgPath}
                     alt={selectedArticle.title}
                     fill
                     className='object-cover'
                     sizes='(max-width: 1024px) 100vw, 800px'
                   />
                 ) : (
-                  /* 임시 fallback 이미지 */
+                  /* 대체 이미지 */
                   <Image
-                    src={fallbackImages[0]} // 기본 이미지
+                    src={floristImage1} // 기본 이미지
                     alt={selectedArticle.title}
                     fill
                     className='object-cover'

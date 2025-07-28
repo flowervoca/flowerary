@@ -30,6 +30,12 @@ export async function GET() {
 
     const result = await response.json();
 
+    // 디버깅: 실제 API 응답 구조 확인
+    console.log('🔍 Spring Boot API 응답:', JSON.stringify(result, null, 2));
+    if (result.data && result.data.length > 0) {
+      console.log('🔍 첫 번째 article 데이터:', JSON.stringify(result.data[0], null, 2));
+    }
+
     // Spring Boot API 응답을 프론트엔드 형식으로 변환
     const transformedResult = {
       resultMsg: result.resultMsg,
