@@ -28,9 +28,10 @@ const config: Config = {
         ],
       },
       colors: {
-        primary: 'hsl(var(--primary))',
-        border: 'hsl(var(--border))',
-        ring: 'hsl(var(--ring))',
+        primary: 'rgba(56, 202, 156, 1)',
+        secondary: 'rgba(56, 202, 156, 0.2)',
+        border: 'rgb(238, 238, 238)',
+        ring: 'rgba(56, 202, 156, 1)',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
       },
@@ -41,7 +42,12 @@ const config: Config = {
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
       spacing: {
-        ...Object.fromEntries(Array.from({length: 100}, (_, i) => [i+1, `${(i+1)*0.25}rem`])),
+        ...Object.fromEntries(
+          Array.from({ length: 100 }, (_, i) => [
+            i + 1,
+            `${(i + 1) * 0.25}rem`,
+          ]),
+        ),
       },
     },
   },
