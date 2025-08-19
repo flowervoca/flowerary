@@ -33,6 +33,8 @@ const ThreeDFlowerViewer: React.FC<
   flowerModels,
   wrapperModel,
   decorationModel,
+  flowerModelId,
+  decorationModelId,
   onDownload,
   onCopy,
   color = 'bg-[#E5E5E5]',
@@ -75,14 +77,25 @@ const ThreeDFlowerViewer: React.FC<
   } = useThreeSetup(mountRef, isMounted);
 
   // 위치 정보 데이터 조회
-  const { positionData, loading: positionLoading } = usePositionData({
-    ready,
-    flowerModelId: '60b38cf0-c9ca-4510-94a3-4a13807e95c9', // rose 모델 ID
-    decorationModelId: '05223b34-2d63-4a59-9f63-6de42b2384ff',
-    fetchFlowerPositions,
-    fetchFixedWrapper,
-    fetchDecorationPositions,
-  });
+  const { positionData, loading: positionLoading } =
+    usePositionData({
+      ready,
+      flowerModelId:
+        typeof (flowerModelId as any) !== 'undefined' &&
+        (flowerModelId as any) !== null
+          ? String(flowerModelId)
+          : '60b38cf0-c9ca-4510-94a3-4a13807e95c9',
+      decorationModelId:
+        typeof (decorationModelId as any) !== 'undefined' &&
+        (decorationModelId as any) !== null
+          ? String(decorationModelId)
+          : '05223b34-2d63-4a59-9f63-6de42b2384ff',
+      fetchFlowerPositions,
+      fetchFixedWrapper,
+      fetchDecorationPositions,
+    });
+
+  const positionsReady = !!positionData;
 
   // 모델 로딩 관리
   const { models, loading } = useModelLoading({
@@ -93,6 +106,7 @@ const ThreeDFlowerViewer: React.FC<
     decorationModel,
     onModelsLoaded,
     positionData,
+    positionsReady,
   });
 
   // 모델 상호작용 관리

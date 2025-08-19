@@ -739,6 +739,8 @@ export default function ThreeDFlowerEditor() {
               decorationModel={
                 selectedModels['장식']?.filePath
               }
+              flowerModelId={selectedModels['꽃']?.id}
+              decorationModelId={selectedModels['장식']?.id}
               onDownload={handleDownload}
               onCopy={handleCopy}
               color={selectedColor || 'bg-[#E5E5E5]'}

@@ -98,6 +98,42 @@ export const useModelInteraction = ({
         }
 
         if (foundModelType) {
+          // 꽃 클릭 시 order 출력 (userData.position_order 우선)
+          if (foundModelType === 'flower') {
+            let current: THREE.Object3D | null =
+              clickedObject;
+            let rootFlower: THREE.Object3D | null = null;
+            while (current && !rootFlower) {
+              if (models.flowers.includes(current)) {
+                rootFlower = current;
+                break;
+              }
+              current = current.parent;
+            }
+            if (rootFlower) {
+              const order = (rootFlower as any).userData
+                ?.position_order;
+              const record =
+                (rootFlower as any).userData
+                  ?.position_record || null;
+              if (record && typeof record === 'object') {
+                const { id, flower_model_id, ...rest } =
+                  record as Record<string, unknown>;
+                const idx =
+                  models.flowers.indexOf(rootFlower);
+                const labelOrder =
+                  order != null
+                    ? order
+                    : idx >= 0
+                      ? idx + 1
+                      : '';
+                console.log(
+                  `[flower] position${labelOrder} =`,
+                  rest,
+                );
+              }
+            }
+          }
           onModelClick?.(foundModelType);
         } else {
           // 모델이 아닌 경우 배경 클릭으로 처리
