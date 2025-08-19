@@ -636,7 +636,7 @@ export default function ThreeDFlowerEditor() {
 
           {/* 탭 네비게이션 */}
           <div className='flex gap-2 mb-1'>
-            <div className='flex rounded-full p-1 bg-[#D8E4DE] gap-0 w-full h-9 relative'>
+            <div className='flex rounded-full p-1 bg-secondary gap-0 w-full h-9 relative'>
               {/* 슬라이딩 배경 */}
               <div
                 className={`absolute h-7 rounded-full bg-white transition-all duration-300 ease-in-out ${

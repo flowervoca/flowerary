@@ -58,7 +58,7 @@ export function SearchForm({
             onActiveTabChange(value as SearchTabType)
           }
         >
-          <TabsList className='bg-[#D8E4DE] p-1 rounded-full h-12'>
+          <TabsList className='bg-secondary p-1 rounded-full h-12'>
             <TabsTrigger
               value='flowerName'
               className='text-lg rounded-full py-4 px-16 flex-1 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:font-bold'
@@ -81,7 +81,7 @@ export function SearchForm({
                 id='flowerName'
                 type='text'
                 placeholder='꽃의 이름을 검색하세요!'
-                className='w-full text-center text-lg outline-none focus:outline-none active:outline-none'
+                className='w-full h-full text-center text-lg outline-none focus:outline-none active:outline-none'
                 value={flowerNameInput}
                 onChange={(e) =>
                   onFlowerNameChange(e.target.value)
@@ -96,7 +96,7 @@ export function SearchForm({
                 id='flowerDesc'
                 type='text'
                 placeholder='꽃의 설명을 검색하세요!'
-                className='w-full text-center text-lg outline-none focus:outline-none active:outline-none'
+                className='w-full h-full text-center text-lg outline-none focus:outline-none active:outline-none'
                 value={flowerDescInput}
                 onChange={(e) =>
                   onFlowerDescChange(e.target.value)
@@ -128,7 +128,7 @@ export function SearchForm({
               <PopoverTrigger asChild>
                 <Button
                   variant='ghost'
-                  className='p-0 h-auto bg-transparent hover:bg-transparent w-8 h-8'
+                  className='p-0 bg-transparent hover:bg-transparent w-8 h-8'
                   type='button'
                 >
                   <Calendar className='!w-5 !h-5 text-primary' />
