@@ -15,6 +15,8 @@ import { useModelLoading } from './hooks/useModelLoading';
 import { useModelInteraction } from './hooks/useModelInteraction';
 import { useDownloadUtils } from './hooks/useDownloadUtils';
 import { useLoadingState } from './hooks/useLoadingState';
+import { use3DFlower } from '@/hooks/use-3d-flower';
+import { usePositionData } from './hooks/usePositionData';
 
 // 컴포넌트들
 import ModelManager from './components/ModelManager';
@@ -50,6 +52,13 @@ const ThreeDFlowerViewer: React.FC<
   const { isLoading, modelsLoadedOnce, onModelsLoaded } =
     useLoadingState();
 
+  // 3D 꽃 훅에서 위치 정보 조회 함수들 가져오기
+  const {
+    fetchFlowerPositions,
+    fetchFixedWrapper,
+    fetchDecorationPositions,
+  } = use3DFlower();
+
   // 클라이언트 사이드 마운트 확인
   useEffect(() => {
     setIsMounted(true);
@@ -65,6 +74,16 @@ const ThreeDFlowerViewer: React.FC<
     resetCameraPosition,
   } = useThreeSetup(mountRef, isMounted);
 
+  // 위치 정보 데이터 조회
+  const { positionData, loading: positionLoading } = usePositionData({
+    ready,
+    flowerModelId: '60b38cf0-c9ca-4510-94a3-4a13807e95c9', // rose 모델 ID
+    decorationModelId: '05223b34-2d63-4a59-9f63-6de42b2384ff',
+    fetchFlowerPositions,
+    fetchFixedWrapper,
+    fetchDecorationPositions,
+  });
+
   // 모델 로딩 관리
   const { models, loading } = useModelLoading({
     scene,
@@ -73,6 +92,7 @@ const ThreeDFlowerViewer: React.FC<
     wrapperModel,
     decorationModel,
     onModelsLoaded,
+    positionData,
   });
 
   // 모델 상호작용 관리

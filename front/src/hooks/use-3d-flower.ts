@@ -547,6 +547,64 @@ export const use3DFlower = () => {
   );
 
   // ============================================================================
+  // 위치 정보 조회 함수들
+  // ============================================================================
+
+  /**
+   * 꽃 위치 정보 조회
+   */
+  const fetchFlowerPositions = useCallback(async (flowerModelId: string) => {
+    const { data: allData, error: allError } = await supabase
+      .from('flower_positions')
+      .select('*');
+    
+    const { data, error } = await supabase
+      .from('flower_positions')
+      .select('*')
+      .eq('flower_model_id', flowerModelId)
+      .order('position_order');
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data || [];
+  }, []);
+
+  /**
+   * 고정 포장지 정보 조회
+   */
+  const fetchFixedWrapper = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('wrapper_positions')
+      .select('*')
+      .limit(1);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data && data.length > 0 ? data[0] : null;
+  }, []);
+
+  /**
+   * 장식 위치 정보 조회
+   */
+  const fetchDecorationPositions = useCallback(async (decorationModelId: string) => {
+    const { data, error } = await supabase
+      .from('decoration_positions')
+      .select('*')
+      .eq('decoration_model_id', decorationModelId)
+      .limit(1);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data && data.length > 0 ? data[0] : null;
+  }, []);
+
+  // ============================================================================
   // 반환값
   // ============================================================================
 
@@ -573,5 +631,10 @@ export const use3DFlower = () => {
     // 히스토리 핸들러
     undo,
     redo,
+
+    // 위치 정보 조회 함수들
+    fetchFlowerPositions,
+    fetchFixedWrapper,
+    fetchDecorationPositions,
   };
 };

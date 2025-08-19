@@ -30,6 +30,11 @@ interface UseModelLoadingProps {
   wrapperModel?: string;
   decorationModel?: string;
   onModelsLoaded?: (models: LoadedModels) => void; // 모든 모델 로딩 완료 콜백 추가
+  positionData?: {
+    flowerPositions: any[];
+    wrapperPosition: any | null;
+    decorationPosition: any | null;
+  };
 }
 
 interface UseModelLoadingResult {
@@ -85,6 +90,7 @@ export const useModelLoading = ({
   wrapperModel,
   decorationModel,
   onModelsLoaded,
+  positionData,
 }: UseModelLoadingProps): UseModelLoadingResult => {
   // ============================================================================
   // 참조 및 상태
@@ -114,9 +120,11 @@ export const useModelLoading = ({
    * 모델 변환 조정 함수
    * @param model - 변환할 모델
    * @param type - 모델 타입
+   * @param positionIndex - 위치 인덱스 (꽃 모델의 경우)
+   * @param baseScale - 기본 스케일 (꽃 모델의 경우 동일한 스케일 사용)
    */
   const adjustModelTransform = useCallback(
-    (model: THREE.Object3D, type: ModelType): void => {
+    (model: THREE.Object3D, type: ModelType, positionIndex: number = 0, baseScale?: number): void => {
       if (!isValidModelType(type)) {
         console.warn(
           `Invalid model type for transform: ${type}`,
@@ -124,29 +132,113 @@ export const useModelLoading = ({
         return;
       }
 
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const maxSize = Math.max(size.x, size.y, size.z);
-      const baseScale =
-        MODEL_TRANSFORM_CONFIG.baseScale / maxSize;
+      // baseScale이 전달되지 않으면 계산
+      let calculatedBaseScale = baseScale;
+      if (calculatedBaseScale === undefined) {
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxSize = Math.max(size.x, size.y, size.z);
+        calculatedBaseScale = MODEL_TRANSFORM_CONFIG.baseScale / maxSize;
+      }
 
-      const config = MODEL_TRANSFORM_CONFIG[type];
-      model.scale.setScalar(baseScale * config.scale);
-      model.position.set(
-        config.position.x,
-        config.position.y,
-        config.position.z,
-      );
-      model.rotation.set(
-        config.rotation.x,
-        config.rotation.y,
-        config.rotation.z,
-      );
+      // positionData가 있으면 사용, 없으면 기본 설정 사용
+      if (positionData) {
+        let positionConfig;
+        
+        if (type === 'flower' && positionData.flowerPositions[positionIndex]) {
+          const flowerPos = positionData.flowerPositions[positionIndex];
+          positionConfig = {
+            scale: flowerPos.scale_factor || 1,
+            position: { 
+              x: flowerPos.x_coordinate || 0, 
+              y: flowerPos.y_coordinate || 0, 
+              z: flowerPos.z_coordinate || 0 
+            },
+            rotation: { 
+              x: flowerPos.rotation_x || 0, 
+              y: flowerPos.rotation_y || 0, 
+              z: flowerPos.rotation_z || 0 
+            }
+          };
+        } else if (type === 'wrapper' && positionData.wrapperPosition) {
+          const wrapperPos = positionData.wrapperPosition;
+          positionConfig = {
+            scale: wrapperPos.scale_factor || 3,
+            position: { 
+              x: wrapperPos.x_coordinate || 0, 
+              y: wrapperPos.y_coordinate || 0, 
+              z: wrapperPos.z_coordinate || 0 
+            },
+            rotation: { 
+              x: wrapperPos.rotation_x || 0, 
+              y: wrapperPos.rotation_y || 0, 
+              z: wrapperPos.rotation_z || 0 
+            }
+          };
+        } else if (type === 'decoration' && positionData.decorationPosition) {
+          const decorationPos = positionData.decorationPosition;
+          positionConfig = {
+            scale: decorationPos.scale_factor || 1,
+            position: { 
+              x: decorationPos.x_coordinate || 0, 
+              y: decorationPos.y_coordinate || 0, 
+              z: decorationPos.z_coordinate || 0 
+            },
+            rotation: { 
+              x: decorationPos.rotation_x || 0, 
+              y: decorationPos.rotation_y || 0, 
+              z: decorationPos.rotation_z || 0 
+            }
+          };
+        }
+
+        if (positionConfig) {
+          model.scale.setScalar(calculatedBaseScale * positionConfig.scale);
+          model.position.set(
+            positionConfig.position.x,
+            positionConfig.position.y,
+            positionConfig.position.z,
+          );
+          model.rotation.set(
+            positionConfig.rotation.x,
+            positionConfig.rotation.y,
+            positionConfig.rotation.z,
+          );
+        } else {
+          // 기본 설정 사용
+          const config = MODEL_TRANSFORM_CONFIG[type];
+          model.scale.setScalar(calculatedBaseScale * config.scale);
+          model.position.set(
+            config.position.x,
+            config.position.y,
+            config.position.z,
+          );
+          model.rotation.set(
+            config.rotation.x,
+            config.rotation.y,
+            config.rotation.z,
+          );
+        }
+      } else {
+        // positionData가 없으면 기본 설정 사용
+        const config = MODEL_TRANSFORM_CONFIG[type];
+        model.scale.setScalar(calculatedBaseScale * config.scale);
+        model.position.set(
+          config.position.x,
+          config.position.y,
+          config.position.z,
+        );
+        model.rotation.set(
+          config.rotation.x,
+          config.rotation.y,
+          config.rotation.z,
+        );
+      }
 
       model.updateMatrix();
       model.updateMatrixWorld(true);
     },
-    [],
+    [positionData],
   );
 
   /**
@@ -318,14 +410,53 @@ export const useModelLoading = ({
           loadingRef.current.flowers = true;
 
           const newFlowerModels: THREE.Object3D[] = [];
-          for (const modelPath of flowerModels) {
-            if (disposed) return;
-            const model = await loadOrGetCachedModel(
-              modelPath,
-              'flower',
-            );
-            if (model) {
-              newFlowerModels.push(model);
+          
+          // 첫 번째 꽃 모델 로드
+          const firstModelPath = flowerModels[0];
+          const firstModel = await loadOrGetCachedModel(
+            firstModelPath,
+            'flower',
+          );
+          
+          if (firstModel) {
+            // baseScale을 한 번만 계산 (모든 꽃 모델이 동일한 크기를 가지도록)
+            const box = new THREE.Box3().setFromObject(firstModel);
+            const size = box.getSize(new THREE.Vector3());
+            const maxSize = Math.max(size.x, size.y, size.z);
+            const flowerBaseScale = MODEL_TRANSFORM_CONFIG.baseScale / maxSize;
+            
+            // positionData가 있으면 각 위치 데이터에 따라 모델 생성
+            if (positionData && positionData.flowerPositions.length > 0) {
+              positionData.flowerPositions.forEach((_, index) => {
+                if (index === 0) {
+                  // 첫 번째 모델은 이미 로드된 것 사용
+                  adjustModelTransform(firstModel, 'flower', index, flowerBaseScale);
+                  newFlowerModels.push(firstModel);
+                } else {
+                  // 나머지는 복제본 생성
+                  const clonedModel = firstModel.clone();
+                  adjustModelTransform(clonedModel, 'flower', index, flowerBaseScale);
+                  newFlowerModels.push(clonedModel);
+                }
+              });
+            } else {
+              // positionData가 없으면 기존 방식 사용
+              adjustModelTransform(firstModel, 'flower', 0, flowerBaseScale);
+              newFlowerModels.push(firstModel);
+              
+              // 두 번째 모델 (복제본) 생성
+              const secondModel = firstModel.clone();
+              adjustModelTransform(secondModel, 'flower', 1, flowerBaseScale);
+              
+              // 두 번째 모델의 위치를 약간 이동
+              const originalPosition = firstModel.position.clone();
+              secondModel.position.set(
+                originalPosition.x - 2, // 왼쪽으로 2단위 이동
+                originalPosition.y,
+                originalPosition.z
+              );
+              
+              newFlowerModels.push(secondModel);
             }
           }
 
@@ -491,7 +622,7 @@ export const useModelLoading = ({
     useCallback(async (): Promise<void> => {
       if (!scene || !ready) return;
 
-      let disposed = false;
+      const disposed = false;
 
       // 모든 모델 타입을 병렬로 업데이트
       await Promise.all([
