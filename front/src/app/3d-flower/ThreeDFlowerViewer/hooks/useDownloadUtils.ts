@@ -84,7 +84,7 @@ export const useDownloadUtils = ({
       delete (window as any).downloadFlower;
       delete (window as any).copyFlower;
     };
-  }, [isMounted, handleDownload, handleCopy]);
+  }, [isMounted]);
 
   return {
     handleDownload,

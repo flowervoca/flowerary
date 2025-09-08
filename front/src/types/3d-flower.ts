@@ -65,6 +65,8 @@ export interface ThreeDFlowerViewerProps {
   flowerModels: string[]; // 꽃 모델 파일 경로 배열
   wrapperModel?: string; // 포장지 모델 파일 경로 (선택사항)
   decorationModel?: string; // 장식 모델 파일 경로 (선택사항)
+  flowerModelId?: string | number; // 선택된 꽃 모델 ID (DB 조회용)
+  decorationModelId?: string | number; // 선택된 장식 모델 ID (DB 조회용)
   onDownload?: (filename: string) => void; // 다운로드 완료 콜백
   onCopy?: (success: boolean) => void; // 클립보드 복사 완료 콜백
   color?: string; // 배경색 (Tailwind CSS 클래스명)

@@ -15,6 +15,9 @@ import { useModelLoading } from './hooks/useModelLoading';
 import { useModelInteraction } from './hooks/useModelInteraction';
 import { useDownloadUtils } from './hooks/useDownloadUtils';
 import { useLoadingState } from './hooks/useLoadingState';
+import { use3DFlower } from '@/hooks/use-3d-flower';
+import { usePositionData } from './hooks/usePositionData';
+import { SaveIcon } from '@/components/shared/3d-flower-icons';
 
 // 컴포넌트들
 import ModelManager from './components/ModelManager';
@@ -31,6 +34,8 @@ const ThreeDFlowerViewer: React.FC<
   flowerModels,
   wrapperModel,
   decorationModel,
+  flowerModelId,
+  decorationModelId,
   onDownload,
   onCopy,
   color = 'bg-[#E5E5E5]',
@@ -50,6 +55,13 @@ const ThreeDFlowerViewer: React.FC<
   const { isLoading, modelsLoadedOnce, onModelsLoaded } =
     useLoadingState();
 
+  // 3D 꽃 훅에서 위치 정보 조회 함수들 가져오기
+  const {
+    fetchFlowerPositions,
+    fetchFixedWrapper,
+    fetchDecorationPositions,
+  } = use3DFlower();
+
   // 클라이언트 사이드 마운트 확인
   useEffect(() => {
     setIsMounted(true);
@@ -65,6 +77,27 @@ const ThreeDFlowerViewer: React.FC<
     resetCameraPosition,
   } = useThreeSetup(mountRef, isMounted);
 
+  // 위치 정보 데이터 조회
+  const { positionData, loading: positionLoading } =
+    usePositionData({
+      ready,
+      flowerModelId:
+        typeof (flowerModelId as any) !== 'undefined' &&
+        (flowerModelId as any) !== null
+          ? String(flowerModelId)
+          : '60b38cf0-c9ca-4510-94a3-4a13807e95c9',
+      decorationModelId:
+        typeof (decorationModelId as any) !== 'undefined' &&
+        (decorationModelId as any) !== null
+          ? String(decorationModelId)
+          : '05223b34-2d63-4a59-9f63-6de42b2384ff',
+      fetchFlowerPositions,
+      fetchFixedWrapper,
+      fetchDecorationPositions,
+    });
+
+  const positionsReady = !!positionData;
+
   // 모델 로딩 관리
   const { models, loading } = useModelLoading({
     scene,
@@ -73,6 +106,8 @@ const ThreeDFlowerViewer: React.FC<
     wrapperModel,
     decorationModel,
     onModelsLoaded,
+    positionData,
+    positionsReady,
   });
 
   // 모델 상호작용 관리
@@ -157,6 +192,17 @@ const ThreeDFlowerViewer: React.FC<
 
       {/* 씬 배경색 관리 */}
       <SceneManager scene={scene} color={color} />
+
+      {/* 다운로드 버튼 */}
+      <div className='absolute bottom-4 right-4 z-20'>
+        <button
+          className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'
+          onClick={handleDownload}
+          title='다운로드'
+        >
+          <SaveIcon />
+        </button>
+      </div>
     </div>
   );
 };

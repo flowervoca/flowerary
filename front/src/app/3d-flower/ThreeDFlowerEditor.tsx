@@ -11,12 +11,12 @@ import { WebGLRenderer, Scene, Camera } from 'three';
 import ThreeDFlowerViewer from './ThreeDFlowerViewer/index';
 import { use3DFlower } from '@/hooks/use-3d-flower';
 import {
-  COLORS,
   MATERIAL_COLORS,
   CATEGORY_MAPPING,
   SHARE_IMAGE_CONFIG,
   COLOR_MAP,
 } from '@/utils/3d-flower-constants';
+import { DisplayItem } from '@/types/3d-flower';
 import {
   RainbowIcon,
   UndoIcon,
@@ -29,7 +29,16 @@ import {
   initKakao,
   shareToKakao,
 } from './utils/shareUtils';
+import { BouquetState } from '@/utils/url-params-utils';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 // ============================================================================
 // 유틸리티 함수들
@@ -121,6 +130,11 @@ export default function ThreeDFlowerEditor() {
   const [resetCameraFunction, setResetCameraFunction] =
     useState<(() => void) | null>(null);
 
+  // 편지 작성 팝업 상태
+  const [isLetterDialogOpen, setIsLetterDialogOpen] = useState(false);
+  const [letterContent, setLetterContent] = useState('');
+  const [hideLetterContent, setHideLetterContent] = useState(false);
+
   // 커스텀 색상 상태 (각 모드별로 독립적으로 관리)
   const [customColors, setCustomColors] = useState(
     INITIAL_CUSTOM_COLORS,
@@ -159,13 +173,7 @@ export default function ThreeDFlowerEditor() {
     [currentTabItems, searchQuery],
   );
 
-  const hasSelectedModels = useMemo(
-    () =>
-      Object.values(selectedModels).some(
-        (model) => model !== null,
-      ),
-    [selectedModels],
-  );
+
 
   // 현재 색상 모드에 따른 색상 값
   const currentColor = useMemo(() => {
@@ -304,7 +312,6 @@ export default function ThreeDFlowerEditor() {
    * 커스텀 색상 버튼 클릭 핸들러 (이미 선택된 커스텀 색상이 있는 경우)
    */
   const handleCustomColorClick = useCallback(() => {
-    const currentCustomColor = customColors[colorMode];
     const isCustomColorUsed = customColorUsed[colorMode];
 
     // 현재 적용된 색상이 있으면 그것을 기본값으로 설정
@@ -326,7 +333,6 @@ export default function ThreeDFlowerEditor() {
     }
   }, [
     colorMode,
-    customColors,
     customColorUsed,
     currentColor,
   ]);
@@ -361,7 +367,7 @@ export default function ThreeDFlowerEditor() {
 
     // 약간의 지연 후 다운로드 실행
     setTimeout(() => {
-      (window as any).downloadFlower?.(
+      (window as { downloadFlower?: (filename: string) => void }).downloadFlower?.(
         title || '3D-Flowerary',
       );
     }, 100);
@@ -382,9 +388,9 @@ export default function ThreeDFlowerEditor() {
   );
 
   /**
-   * 카카오톡 공유 핸들러
+   * 공유 버튼 클릭 핸들러 (편지 작성 팝업 표시)
    */
-  const handleShare = useCallback(async () => {
+  const handleShareClick = useCallback(() => {
     if (!selectedModels[CATEGORY_MAPPING[tab]]) {
       showToastMessage(
         '공유할 꽃다발을 먼저 선택해주세요.',
@@ -401,28 +407,90 @@ export default function ThreeDFlowerEditor() {
       return;
     }
 
+    // 편지 작성 팝업 열기
+    setIsLetterDialogOpen(true);
+  }, [
+    selectedModels,
+    tab,
+    threeJSObjects,
+    showToastMessage,
+  ]);
+
+  /**
+   * 편지 작성 완료/건너뛰기 핸들러
+   */
+  const handleLetterComplete = useCallback(async (skip: boolean = false) => {
+    setIsLetterDialogOpen(false);
+    
+    // 건너뛰기인 경우 편지 내용 초기화
+    if (skip) {
+      setLetterContent('');
+    }
+
+    // 현재 상태를 BouquetState로 변환
+    const bouquetState: BouquetState = {
+      flowerModelId: selectedModels['꽃']?.id?.toString(),
+      wrapperModelId: selectedModels['포장지']?.id?.toString(),
+      decorationModelId: selectedModels['장식']?.id?.toString(),
+      backgroundColor: selectedColor,
+      wrapperColor: wrapperColor,
+      decorationColor: decorationColor,
+      title: title,
+      letterContent: letterContent,
+      hideLetterContent: hideLetterContent,
+    };
+
+    // 카카오톡 공유 실행
     const success = await shareToKakao(
-      title || '나만의 3D 꽃다발💐',
+      title ? `To. ${title}` : '꽃다발 배달왔어요💐',
       SHARE_IMAGE_CONFIG.hashtags,
       SHARE_IMAGE_CONFIG.defaultImageUrl,
+      letterContent, // 편지 내용 전달
+      hideLetterContent, // 편지 내용 숨기기 상태 전달
+      bouquetState, // 현재 상태 전달
+      threeJSObjects.renderer && threeJSObjects.scene && threeJSObjects.camera 
+        ? threeJSObjects as { renderer: WebGLRenderer; scene: Scene; camera: Camera }
+        : undefined, // Three.js 객체들 전달
     );
 
     if (!success) {
       showToastMessage('카카오톡 공유에 실패했습니다.');
     }
+
+    // 팝업 닫힐 때 상태 초기화
+    setLetterContent('');
+    setHideLetterContent(false);
   }, [
-    selectedModels,
-    tab,
-    threeJSObjects,
     title,
+    letterContent,
+    hideLetterContent,
     showToastMessage,
+    selectedModels,
+    selectedColor,
+    wrapperColor,
+    decorationColor,
+    threeJSObjects,
   ]);
+
+  /**
+   * 편지 내용 변경 핸들러
+   */
+  const handleLetterContentChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      // 20자 제한
+      if (value.length <= 20) {
+        setLetterContent(value);
+      }
+    },
+    [],
+  );
 
   /**
    * 아이템 클릭 핸들러
    */
   const handleItemClick = useCallback(
-    (item: any) => {
+    (item: DisplayItem) => {
       // 모델 선택 시 색상 모드 변경 (꽃 제외)
       switch (CATEGORY_MAPPING[tab]) {
         case '포장지':
@@ -448,7 +516,7 @@ export default function ThreeDFlowerEditor() {
       // 색상 관련 UI 닫기
       setColorOpen(false);
     },
-    [tab, handleModelSelect, selectedModels, colorMode],
+    [tab, handleModelSelect, selectedModels],
   );
 
   /**
@@ -628,10 +696,10 @@ export default function ThreeDFlowerEditor() {
         <aside className='w-[260px] h-full bg-white rounded-2xl shadow flex flex-col p-4'>
           {/* 제목 입력 */}
           <input
-            className='mb-4 text-lg font-bold border-b outline-none px-2 py-1'
+            className='mb-4 text-lg font-bold border-b outline-none px-2 py-1 text-black'
             value={title}
             onChange={handleTitleChange}
-            placeholder='이름을 지어주세요'
+            placeholder='To.'
           />
 
           {/* 탭 네비게이션 */}
@@ -739,6 +807,8 @@ export default function ThreeDFlowerEditor() {
               decorationModel={
                 selectedModels['장식']?.filePath
               }
+              flowerModelId={selectedModels['꽃']?.id}
+              decorationModelId={selectedModels['장식']?.id}
               onDownload={handleDownload}
               onCopy={handleCopy}
               color={selectedColor || 'bg-[#E5E5E5]'}
@@ -882,7 +952,7 @@ export default function ThreeDFlowerEditor() {
           <div className='absolute bottom-4 right-4 flex flex-col gap-4'>
             <button
               className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'
-              onClick={handleShare}
+              onClick={handleShareClick}
             >
               <ShareIcon />
             </button>
@@ -937,6 +1007,74 @@ export default function ThreeDFlowerEditor() {
           </div>
         </section>
       </div>
+
+      {/* 편지 작성 팝업 */}
+      <Dialog 
+        open={isLetterDialogOpen} 
+        onOpenChange={(open) => {
+          setIsLetterDialogOpen(open);
+          if (!open) {
+            // 팝업이 닫힐 때 상태 초기화
+            setLetterContent('');
+            setHideLetterContent(false);
+          }
+        }}
+      >
+        <DialogContent className='w-[22rem] max-h-[280px]'>
+          <DialogHeader className='pb-2'>
+            <DialogTitle className='text-center text-base font-semibold text-black'>
+              편지 작성하기
+            </DialogTitle>
+          </DialogHeader>
+          <div className='space-y-2'>
+            <div className='text-center text-xs text-gray-600'>
+              편지 내용을 입력해주세요 (20자 이내)
+            </div>
+            <div className='relative'>
+              <Input
+                placeholder='편지 내용을 입력하세요...'
+                value={letterContent}
+                onChange={handleLetterContentChange}
+                className='text-black placeholder:text-gray-500 border-0 border-b-2 border-gray-300 focus:border-blue-500 rounded-none px-0 py-1 focus:ring-0 text-sm'
+                maxLength={20}
+              />
+              <div className='text-right text-xs text-gray-500 mt-1'>
+                {letterContent.length}/20
+              </div>
+            </div>
+            <div className='flex justify-between items-end pt-1'>
+              <div className='flex items-center gap-2'>
+                <input
+                  type='checkbox'
+                  id='hideLetter'
+                  checked={hideLetterContent}
+                  onChange={(e) => {
+                    console.log('체크박스 변경:', e.target.checked);
+                    setHideLetterContent(e.target.checked);
+                  }}
+                  className='w-4 h-4 text-[#3E7959] bg-gray-100 border-gray-300 rounded focus:ring-[#3E7959] focus:ring-2 cursor-pointer'
+                />
+                <label 
+                  htmlFor='hideLetter' 
+                  className='text-xs text-gray-600 cursor-pointer select-none'
+                  onClick={() => {
+                    console.log('라벨 클릭');
+                    setHideLetterContent(!hideLetterContent);
+                  }}
+                >
+                  내용 숨기기
+                </label>
+              </div>
+              <Button
+                onClick={() => handleLetterComplete(letterContent.trim().length === 0)}
+                className='px-4 py-1 h-8 text-sm bg-[#3E7959] text-white hover:bg-[#35684b]'
+              >
+                {letterContent.trim() ? '완료' : '건너뛰기'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 토스트 메시지 */}
       {showToast && (

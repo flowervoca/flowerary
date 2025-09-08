@@ -6,7 +6,8 @@ module.exports = {
       'img.freepik.com',
       'blog.kakaocdn.net',
       'www.nihhs.go.kr',
-      'oolkuscvkgdziqfysead.storage.supabase.co'
+      'oolkuscvkgdziqfysead.storage.supabase.co',
+      'oolkuscvkgdziqfysead.supabase.co'
     ],
   },
 }; 

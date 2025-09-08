@@ -8,5 +8,5 @@ export const SHARE_IMAGE_CONFIG = {
   width: 400,
   defaultImageUrl:
     'https://hyeonseong2023.github.io/3D-Share-Test/study/images/flower.png',
-  hashtags: '#핑크무드 #고백선물 #향기한줌 #설렘가득',
+  hashtags: '',
 } as const;

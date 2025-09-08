@@ -15,7 +15,8 @@ export const saveScreenshot = (
     now.getMinutes().toString().padStart(2, '0') +
     now.getSeconds().toString().padStart(2, '0');
 
-  const filename = `${title || '3D-Flowerary'}-${timestamp}.png`;
+  const safeTitle = typeof title === 'string' ? title : '3D-Flowerary';
+  const filename = `${safeTitle}-${timestamp}.png`;
 
   renderer.render(scene, camera);
   const imageData =
