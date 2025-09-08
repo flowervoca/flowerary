@@ -114,6 +114,9 @@ export const useModelLoading = ({
   // 모든 모델 로딩 완료 상태 참조
   const allModelsLoadedRef = useRef<boolean>(false);
 
+  // 로딩 중인지 확인하는 플래그
+  const isLoadingRef = useRef<boolean>(false);
+
   // ============================================================================
   // 모델 변환 및 설정 함수들
   // ============================================================================
@@ -277,7 +280,7 @@ export const useModelLoading = ({
       model.updateMatrix();
       model.updateMatrixWorld(true);
     },
-    [positionData],
+    [positionData?.flowerPositions, positionData?.wrapperPosition, positionData?.decorationPosition],
   );
 
   /**
@@ -431,7 +434,9 @@ export const useModelLoading = ({
     flowerModels.length,
     wrapperModel,
     decorationModel,
-    models,
+    models.flowers.length,
+    models.wrapper,
+    models.decoration,
     onModelsLoaded,
   ]);
 
@@ -630,6 +635,7 @@ export const useModelLoading = ({
       loadOrGetCachedModel,
       scene,
       positionData,
+      adjustModelTransform,
     ],
   );
 
@@ -684,7 +690,7 @@ export const useModelLoading = ({
         });
       }
     },
-    [wrapperModel, loadOrGetCachedModel, scene],
+    [wrapperModel, loadOrGetCachedModel, scene, adjustModelTransform],
   );
 
   // ============================================================================
@@ -738,7 +744,7 @@ export const useModelLoading = ({
         });
       }
     },
-    [decorationModel, loadOrGetCachedModel, scene],
+    [decorationModel, loadOrGetCachedModel, scene, adjustModelTransform],
   );
 
   // ============================================================================
@@ -750,19 +756,25 @@ export const useModelLoading = ({
    */
   const updateModels =
     useCallback(async (): Promise<void> => {
-      if (!scene || !ready) return;
+      if (!scene || !ready || isLoadingRef.current) return;
 
       // 위치 데이터가 제공되는 경우, 준비될 때까지 대기하여 즉시 올바른 배치로 표시
       if (positionData && positionsReady === false) return;
 
-      const disposed = false;
+      isLoadingRef.current = true;
 
-      // 모든 모델 타입을 병렬로 업데이트
-      await Promise.all([
-        updateFlowerModels(disposed),
-        updateWrapperModel(disposed),
-        updateDecorationModel(disposed),
-      ]);
+      try {
+        const disposed = false;
+
+        // 모든 모델 타입을 병렬로 업데이트
+        await Promise.all([
+          updateFlowerModels(disposed),
+          updateWrapperModel(disposed),
+          updateDecorationModel(disposed),
+        ]);
+      } finally {
+        isLoadingRef.current = false;
+      }
     }, [
       scene,
       ready,
@@ -780,12 +792,28 @@ export const useModelLoading = ({
   // 모델 로딩 및 관리
   useEffect(() => {
     updateModels();
-  }, [updateModels]);
+  }, [
+    scene,
+    ready,
+    flowerModels,
+    wrapperModel,
+    decorationModel,
+    positionData,
+    positionsReady,
+  ]);
 
   // 모델 상태 변경 시 로딩 완료 확인
   useEffect(() => {
     checkAllModelsLoaded();
-  }, [checkAllModelsLoaded]);
+  }, [
+    flowerModels.length,
+    wrapperModel,
+    decorationModel,
+    models.flowers.length,
+    models.wrapper,
+    models.decoration,
+    onModelsLoaded,
+  ]);
 
   // ============================================================================
   // 반환값
