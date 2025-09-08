@@ -1,6 +1,5 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Calendar } from 'lucide-react';
 import { useState } from 'react';
@@ -11,6 +10,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { SearchTabType } from '@/types/search';
@@ -88,127 +93,127 @@ export function SearchSection() {
           </div>
 
           {/* 탭 전환 섹션 */}
-          <div className='flex justify-center mb-4 w-[280px] h-[52px]'>
-            <div className='flex rounded-full p-1 bg-[#D8E4DE] gap-0 w-full h-full relative'>
-              {/* 슬라이딩 배경 */}
-              <div
-                className={`absolute h-[calc(100%-0.5rem)] rounded-full bg-white transition-all duration-300 ease-in-out ${
-                  activeTab === 'flowerName'
-                    ? 'left-1 w-[calc(50%-0.5rem)]'
-                    : 'left-[calc(50%+0.25rem)] w-[calc(50%-0.5rem)]'
-                }`}
-              />
-              <Button
-                variant='ghost'
-                className={`rounded-full px-4 md:px-6 font-semibold shadow-none border-none transition-all w-1/2 h-full relative z-10
-                  ${activeTab === 'flowerName' ? 'text-primary' : 'text-[#6F8278]'}`}
-                onClick={() => setActiveTab('flowerName')}
-              >
-                꽃이름 검색
-              </Button>
-              <Button
-                variant='ghost'
-                className={`rounded-full px-4 md:px-6 font-semibold shadow-none border-none transition-all w-1/2 h-full relative z-10
-                  ${activeTab === 'flowerDesc' ? 'text-primary' : 'text-[#6F8278]'}`}
-                onClick={() => setActiveTab('flowerDesc')}
-              >
-                꽃말 검색
-              </Button>
-            </div>
-          </div>
-
-          {/* 검색어 섹션 */}
-          <form
-            onSubmit={handleSubmit}
-            className='flex justify-center w-full h-[80px]'
-          >
-            <div className='flex items-center w-full max-w-[760px] h-full border border-primary rounded-full px-4 py-2 bg-background'>
-              <Input
-                type='search'
-                placeholder={
-                  activeTab === 'flowerName'
-                    ? '꽃의 이름을 검색하세요'
-                    : '꽃말을 검색하세요'
-                }
-                value={
-                  activeTab === 'flowerName'
-                    ? flowerNameInput
-                    : flowerDescInput
-                }
-                onChange={(e) =>
-                  activeTab === 'flowerName'
-                    ? setFlowerNameInput(e.target.value)
-                    : setFlowerDescInput(e.target.value)
-                }
-                onKeyDown={handleKeyDown}
-                className='border-none focus:ring-0 bg-transparent flex-1 text-base text-foreground placeholder:text-center'
-                style={{ textAlign: 'center' }}
-                onFocus={(e) =>
-                  (e.target.style.textAlign = 'left')
-                }
-                onBlur={(e) =>
-                  e.target.value === ''
-                    ? (e.target.style.textAlign = 'center')
-                    : null
-                }
-              />
-
-              {/* 날짜 선택 */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    className='p-0 h-auto w-auto mr-3'
-                  >
-                    <Calendar className='w-5 h-5 text-primary cursor-pointer' />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className='w-auto p-0'
-                  align='end'
+          <div className='flex justify-center mb-4 w-full max-w-2xl'>
+            <Tabs
+              className='flex w-full justify-center items-center'
+              defaultValue='flowerName'
+              value={activeTab}
+              onValueChange={(value) =>
+                setActiveTab(value as SearchTabType)
+              }
+            >
+              <TabsList className='bg-secondary p-1 rounded-full h-12'>
+                <TabsTrigger
+                  value='flowerName'
+                  className='text-lg rounded-full py-4 px-16 flex-1 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:font-bold'
                 >
-                  <CalendarComponent
-                    mode='single'
-                    selected={searchDate}
-                    onSelect={setSearchDate}
-                    locale={ko}
-                    initialFocus
+                  꽃 검색
+                </TabsTrigger>
+                <TabsTrigger
+                  value='flowerDesc'
+                  className='text-lg rounded-full py-4 px-16 flex-1 text-gray-500 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:font-bold'
+                >
+                  꽃말 검색
+                </TabsTrigger>
+              </TabsList>
+
+              {/* 검색어 섹션 */}
+              <div className='relative w-full mt-4 flex rounded-full border-2 border-primary py-3 px-8 gap-4 bg-white'>
+                <TabsContent
+                  value='flowerName'
+                  className='w-full'
+                >
+                  <input
+                    id='flowerName'
+                    type='text'
+                    placeholder='꽃의 이름을 검색하세요!'
+                    className='w-full h-full text-center text-lg outline-none focus:outline-none active:outline-none'
+                    value={flowerNameInput}
+                    onChange={(e) =>
+                      setFlowerNameInput(e.target.value)
+                    }
+                    onKeyDown={handleKeyDown}
                   />
-                  {searchDate && (
-                    <div className='p-3 border-t'>
-                      <div className='text-sm text-gray-600 mb-2'>
-                        선택된 날짜:{' '}
+                </TabsContent>
+                <TabsContent
+                  value='flowerDesc'
+                  className='w-full'
+                >
+                  <input
+                    id='flowerDesc'
+                    type='text'
+                    placeholder='꽃의 설명을 검색하세요!'
+                    className='w-full h-full text-center text-lg outline-none focus:outline-none active:outline-none'
+                    value={flowerDescInput}
+                    onChange={(e) =>
+                      setFlowerDescInput(e.target.value)
+                    }
+                    onKeyDown={handleKeyDown}
+                  />
+                </TabsContent>
+
+                {/* 선택된 날짜 표시 */}
+                {searchDate && (
+                  <div className='flex justify-center mb-4 absolute top-2.5 right-28'>
+                    <div className='inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full text-sm text-primary'>
+                      <span>
                         {format(searchDate, 'M월 d일', {
                           locale: ko,
-                        })}
-                      </div>
-                      <Button
-                        variant='outline'
-                        size='sm'
+                        })}{' '}
+                        ({searchDate.getMonth() + 1}월{' '}
+                        {searchDate.getDate()}일)
+                      </span>
+                      <button
                         onClick={() =>
                           setSearchDate(undefined)
                         }
-                        className='w-full'
+                        className='hover:bg-primary/20 rounded-full p-1'
+                        type='button'
                       >
-                        날짜 초기화
-                      </Button>
+                        ✕
+                      </button>
                     </div>
-                  )}
-                </PopoverContent>
-              </Popover>
+                  </div>
+                )}
 
-              {/* 검색 버튼 */}
-              <Button
-                type='submit'
-                variant='ghost'
-                size='sm'
-                className='p-0 h-auto w-auto'
-              >
-                <Search className='w-5 h-5 text-primary cursor-pointer' />
-              </Button>
-            </div>
-          </form>
+                {/* 날짜 선택 */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant='ghost'
+                      className='p-0 h-auto bg-transparent hover:bg-transparent w-8 h-8'
+                      type='button'
+                    >
+                      <Calendar className='!w-5 !h-5 text-primary' />
+                      <span className='sr-only'>
+                        날짜 선택
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className='w-auto p-0'
+                    align='center'
+                  >
+                    <CalendarComponent
+                      mode='single'
+                      selected={searchDate}
+                      onSelect={setSearchDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* 검색 버튼 */}
+                <button
+                  type='button'
+                  onClick={handleSearch}
+                >
+                  <Search className='w-5 h-5 text-primary' />
+                  <span className='sr-only'>검색</span>
+                </button>
+              </div>
+            </Tabs>
+          </div>
         </div>
       </div>
     </div>
