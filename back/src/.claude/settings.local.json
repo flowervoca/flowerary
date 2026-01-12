@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rm:*)",
+      "Bash(git submodule add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd flowery_backend as git submodule\n\nReplace existing back folder with flowery_backend repository as a submodule for independent repository management.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git submodule:*)"
+    ]
+  }
+}

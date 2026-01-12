@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .flower-list {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 가로 5개 */
+            gap: 20px; /* 아이템 간 여백 */
+            padding: 0;
+            list-style: none;
+        }
+
+        .flower-item {
+            text-align: center;
+        }
+
+        .flower-item img {
+            width: 100%; /* 아이템 너비에 맞게 조정 */
+            max-width: 150px; /* 최대 너비 제한 */
+            height: auto; /* 비율 유지 */
+            border-radius: 10px; /* 둥근 모서리 (선택) */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* 그림자 효과 (선택) */
+            display: block;
+            margin: 0 auto;
+        }
+
+    </style>
+</head>
+<body>
+<div>안녕하세요 벡엔드 서버입니다..!</div>
+<div>현재 서버의 보유중인 꽃 목록입니다.</div>
+
+
+<h1>신규 등록된 Flower List</h1>
+
+<ul class="flower-list">
+    <li class="flower-item" th:each="flower : ${flowers}">
+        <span th:text="${flower.flowNm}">Flower Name</span>
+        <img alt="Flower Image" th:src="@{${flower.imgUrl1}}"/>
+        <img alt="Flower Image" th:src="@{${flower.imgUrl2}}"/>
+        <img alt="Flower Image" th:src="@{${flower.imgUrl3}}"/>
+    </li>
+</ul>
+
+
+</body>
+</html>
