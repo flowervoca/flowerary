@@ -174,6 +174,7 @@ export const useModelLoading = ({
             positionData.flowerPositions[positionIndex];
           positionConfig = {
             scale: toNumberOr(flowerPos.scale_factor, 1),
+            is_mirrored: Boolean(flowerPos.is_mirrored),
             position: {
               x: toNumberOr(flowerPos.x_coordinate, 0),
               y: toNumberOr(flowerPos.y_coordinate, 0),
@@ -192,6 +193,7 @@ export const useModelLoading = ({
           const wrapperPos = positionData.wrapperPosition;
           positionConfig = {
             scale: toNumberOr(wrapperPos.scale_factor, 3),
+            is_mirrored: Boolean(wrapperPos.is_mirrored),
             position: {
               x: toNumberOr(wrapperPos.x_coordinate, 0),
               y: toNumberOr(wrapperPos.y_coordinate, 0),
@@ -214,6 +216,7 @@ export const useModelLoading = ({
               decorationPos.scale_factor,
               1,
             ),
+            is_mirrored: Boolean(decorationPos.is_mirrored),
             position: {
               x: toNumberOr(decorationPos.x_coordinate, 0),
               y: toNumberOr(decorationPos.y_coordinate, 0),
@@ -228,9 +231,12 @@ export const useModelLoading = ({
         }
 
         if (positionConfig) {
-          model.scale.setScalar(
-            calculatedBaseScale * positionConfig.scale,
-          );
+          const finalScale = calculatedBaseScale * positionConfig.scale;
+          
+          // 좌우반전 처리: is_mirrored가 true면 X축을 음수로 설정
+          const xScale = positionConfig.is_mirrored ? -finalScale : finalScale;
+          
+          model.scale.set(xScale, finalScale, finalScale);
           model.position.set(
             positionConfig.position.x,
             positionConfig.position.y,
@@ -245,9 +251,8 @@ export const useModelLoading = ({
         } else {
           // 기본 설정 사용
           const config = MODEL_TRANSFORM_CONFIG[type];
-          model.scale.setScalar(
-            calculatedBaseScale * config.scale,
-          );
+          const finalScale = calculatedBaseScale * config.scale;
+          model.scale.set(finalScale, finalScale, finalScale);
           model.position.set(
             config.position.x,
             config.position.y,
@@ -262,9 +267,8 @@ export const useModelLoading = ({
       } else {
         // positionData가 없으면 기본 설정 사용
         const config = MODEL_TRANSFORM_CONFIG[type];
-        model.scale.setScalar(
-          calculatedBaseScale * config.scale,
-        );
+        const finalScale = calculatedBaseScale * config.scale;
+        model.scale.set(finalScale, finalScale, finalScale);
         model.position.set(
           config.position.x,
           config.position.y,

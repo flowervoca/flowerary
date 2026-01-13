@@ -92,3 +92,33 @@ export type CategoryMapping = {
 export type ColorMap = {
   [key: string]: string;
 };
+
+// 위치 데이터 인터페이스
+export interface PositionData {
+  scale_factor: number;
+  is_mirrored?: boolean; // 좌우반전 여부
+  x_coordinate: number;
+  y_coordinate: number;
+  z_coordinate: number;
+  rotation_x: number;
+  rotation_y: number;
+  rotation_z: number;
+}
+
+// 꽃 위치 데이터 인터페이스
+export interface FlowerPositionData extends PositionData {
+  id: string;
+  flower_model_id: string;
+  position_order: number;
+}
+
+// 포장지 위치 데이터 인터페이스
+export interface WrapperPositionData extends PositionData {
+  id: string;
+}
+
+// 장식 위치 데이터 인터페이스
+export interface DecorationPositionData extends PositionData {
+  id: string;
+  decoration_model_id: string;
+}
