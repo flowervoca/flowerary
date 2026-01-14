@@ -197,7 +197,7 @@ const ThreeDFlowerViewer: React.FC<
       <div className='absolute bottom-4 right-4 z-20'>
         <button
           className='w-10 h-10 rounded-full bg-[#3E7959] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:bg-[#35684b] transition-all duration-150 ease-in-out flex items-center justify-center'
-          onClick={handleDownload}
+          onClick={() => handleDownload()}
           title='다운로드'
         >
           <SaveIcon />
