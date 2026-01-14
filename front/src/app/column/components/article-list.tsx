@@ -76,10 +76,10 @@ export function ArticleList({
             </div>
 
             {/* 이미지 영역 */}
-            {article.image && (
+            {article.imgPath && (
               <div className='relative w-full h-[230px] rounded-b-2xl overflow-hidden'>
                 <Image
-                  src={article.image}
+                  src={article.imgPath}
                   alt={article.title}
                   fill
                   className='object-cover'

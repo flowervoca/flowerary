@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   decodeBouquetState,
@@ -9,7 +9,7 @@ import {
 import ThreeDFlowerViewer from '@/app/3d-flower/ThreeDFlowerViewer/index';
 import { use3DFlower } from '@/hooks/use-3d-flower';
 
-export default function BouquetPage() {
+function BouquetPageContent() {
   const searchParams = useSearchParams();
   const [bouquetState, setBouquetState] =
     useState<BouquetState | null>(null);
@@ -205,5 +205,22 @@ export default function BouquetPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BouquetPage() {
+  return (
+    <Suspense fallback={
+      <div className='w-full h-screen flex items-center justify-center bg-[#F5F5F5]'>
+        <div className='text-center'>
+          <div className='w-16 h-16 border-4 border-gray-300 border-t-pink-500 rounded-full animate-spin mx-auto mb-4'></div>
+          <p className='text-lg text-gray-600'>
+            꽃다발을 불러오는 중...
+          </p>
+        </div>
+      </div>
+    }>
+      <BouquetPageContent />
+    </Suspense>
   );
 }

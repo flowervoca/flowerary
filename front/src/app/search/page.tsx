@@ -6,10 +6,10 @@ import { SearchFilters } from './components/search-filters';
 import { SearchResults } from './components/search-results';
 import { Header } from '@/components/common/header';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, Suspense } from 'react';
 import { SearchTabType } from '@/types/search';
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const initialSearchExecuted = useRef(false);
 
@@ -147,5 +147,17 @@ export default function SearchPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className='container mx-auto py-10 px-4 flex items-center justify-center min-h-[50vh]'>
+        <div className='text-xl font-medium'>로딩중</div>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }
