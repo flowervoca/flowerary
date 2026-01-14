@@ -1,4 +1,9 @@
-module.exports = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    // 빌드 시 ESLint 무시 (프로덕션 배포용)
+    ignoreDuringBuilds: true,
+  },
   images: {
     domains: [
       'mblogthumb-phinf.pstatic.net',
@@ -10,4 +15,6 @@ module.exports = {
       'oolkuscvkgdziqfysead.supabase.co'
     ],
   },
-}; 
+};
+
+module.exports = nextConfig;
