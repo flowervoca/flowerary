@@ -185,7 +185,7 @@ export function Maps() {
     <section className='w-full'>
       {/* 카카오맵 SDK Script 동적 로딩 */}
       <Script
-        src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_API_KEY}&autoload=false&libraries=services`}
+        src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=8e4b7ef897334b13b8b3d473be01f42e&autoload=false&libraries=services`}
         strategy='afterInteractive'
         onLoad={() => {
           window.kakao.maps.load(() => {
